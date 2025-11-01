@@ -68,21 +68,8 @@ if (empty($errors)) {
     }
 }
 
-// Check if client has already invested in this project
-if (empty($errors)) {
-    $checkExistingSQL = "SELECT id FROM client_investments WHERE client_id = ? AND investment_id = ?";
-    $stmt = $conn->prepare($checkExistingSQL);
-    $stmt->bind_param("ii", $client_id, $investment_id);
-    $stmt->execute();
-    
-    // Use bind_result for compatibility
-    $stmt->bind_result($existing_id);
-    
-    if ($stmt->fetch()) {
-        $errors[] = "You have already invested in this project.";
-    }
-    $stmt->close();
-}
+// Note: Clients are allowed to invest multiple times in the same project
+// No need to check for existing investments
 
 // If no errors, process the investment
 if (empty($errors)) {
@@ -92,11 +79,11 @@ if (empty($errors)) {
         
         // Insert investment record with 'pending' status
         $insertSQL = "INSERT INTO client_investments 
-                     (client_id, investment_id, invested_amount, investment_date, status, created_at) 
-                     VALUES (?, ?, ?, ?, 'pending', NOW())";
+                     (client_id, investment_id, invested_amount, investment_date, status, total_paid, remaining_amount, is_fully_paid, created_at) 
+                     VALUES (?, ?, ?, ?, 'pending', 0.00, ?, 0, NOW())";
         
         $stmt = $conn->prepare($insertSQL);
-        $stmt->bind_param("iids", $client_id, $investment_id, $investment_amount, $investment_date);
+        $stmt->bind_param("iidsd", $client_id, $investment_id, $investment_amount, $investment_date, $investment_amount);
         
         if ($stmt->execute()) {
             $investment_record_id = $conn->insert_id;

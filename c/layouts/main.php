@@ -73,6 +73,35 @@ if (file_exists($head_file)) {
       <!-- page content -->
       <div class="right_col" role="main">
         <?php 
+        // Display success messages
+        if (isset($_SESSION['success_message'])): ?>
+          <div class="alert alert-success alert-dismissible fade in" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">×</span>
+            </button>
+            <strong>Success!</strong> <?= htmlspecialchars($_SESSION['success_message']) ?>
+          </div>
+          <?php unset($_SESSION['success_message']); ?>
+        <?php endif; ?>
+        
+        <?php 
+        // Display error messages
+        if (isset($_SESSION['error_messages'])): ?>
+          <div class="alert alert-danger alert-dismissible fade in" role="alert">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+              <span aria-hidden="true">×</span>
+            </button>
+            <strong>Error!</strong>
+            <ul style="margin-bottom: 0; margin-top: 10px;">
+              <?php foreach ($_SESSION['error_messages'] as $error): ?>
+                <li><?= htmlspecialchars($error) ?></li>
+              <?php endforeach; ?>
+            </ul>
+          </div>
+          <?php unset($_SESSION['error_messages']); ?>
+        <?php endif; ?>
+        
+        <?php 
         if (isset($view) && file_exists($view)) {
             include $view;
         } else {

@@ -30,9 +30,10 @@
           <li><a href="index.php?p=client-list"><i class="fa fa-users"></i> Client List</a></li>
           <li><a href="index.php?p=investment-list"><i class="fa fa-line-chart"></i> Investment Management</a></li>
           <li><a href="index.php?p=client-investment"><i class="fa fa-money"></i> Client Investments</a></li>
+          <li><a href="index.php?p=pending-investments"><i class="fa fa-clock-o"></i> Pending Approvals <span class="badge bg-orange">New</span></a></li>
+          <li><a href="index.php?p=verify-payments"><i class="fa fa-check-square-o"></i> Verify Payments <span class="badge bg-green">New</span></a></li>
           <li><a href="index.php?p=admin-list"><i class="fa fa-user-secret"></i> Admin Management</a></li>
-          </li>
-            <!-- Car-related menu removed for investment context -->
+          <!-- Car-related menu removed for investment context -->
           <!-- add more as needed -->
         </ul>
       </div>

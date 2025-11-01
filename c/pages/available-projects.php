@@ -81,15 +81,16 @@ $stmt->close();
         $projectStarted = strtotime($project['start_date']) <= time();
         $projectEnded = strtotime($project['end_date']) < time();
         
+        // Clients can invest multiple times in the same project
         if ($projectEnded) {
           $statusLabel = '<span class="label label-default">Ended</span>';
           $canInvest = false;
         } elseif ($projectStarted) {
           $statusLabel = '<span class="label label-info">Active</span>';
-          $canInvest = !$isInvested;
+          $canInvest = true; // Allow investing even if already invested
         } else {
           $statusLabel = '<span class="label label-warning">Upcoming</span>';
-          $canInvest = !$isInvested;
+          $canInvest = true; // Allow investing even if already invested
         }
       ?>
       
@@ -156,11 +157,7 @@ $stmt->close();
               <div style="margin-top: 20px;">
                 <?php if ($canInvest && !$projectEnded): ?>
                   <button class="btn btn-primary btn-sm" onclick="showInvestModal(<?= $project['id'] ?>, '<?= htmlspecialchars($project['title']) ?>', <?= $project['total_goal'] ?>, <?= $project['profit_percent'] ?>)">
-                    <i class="fa fa-plus"></i> Invest Now
-                  </button>
-                <?php elseif ($isInvested): ?>
-                  <button class="btn btn-success btn-sm" disabled>
-                    <i class="fa fa-check"></i> Already Invested
+                    <i class="fa fa-plus"></i> <?= $isInvested ? 'Invest Again' : 'Invest Now' ?>
                   </button>
                 <?php else: ?>
                   <button class="btn btn-default btn-sm" disabled>

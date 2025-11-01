@@ -2,3 +2,5 @@ nbproject
 npm-debug.log
 node_modules
 .sass-cache
+uploads/agreements/
+uploads/payments/
