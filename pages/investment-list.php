@@ -82,7 +82,7 @@ $sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_m
         FROM investments i 
         LEFT JOIN client_investments ci ON i.id = ci.investment_id 
         GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date, i.created_at
-        ORDER BY i.start_date DESC";
+        ORDER BY i.created_at DESC";
 $result = $conn->query($sql);
 ?>
 <div class="page-title">

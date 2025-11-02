@@ -124,12 +124,24 @@ try {
         i.end_date,
         SUM(ci.invested_amount) as invested_in_project,
         SUM(ci.invested_amount * i.profit_percent / 100) as expected_profit_from_project,
-        COUNT(ci.id) as investment_count
+        COUNT(ci.id) as investment_count,
+        GROUP_CONCAT(DISTINCT ci.status ORDER BY 
+            CASE ci.status
+                WHEN 'rejected' THEN 1
+                WHEN 'pending' THEN 2
+                WHEN 'approved' THEN 3
+                WHEN 'payment_partial' THEN 4
+                WHEN 'payment_pending' THEN 5
+                WHEN 'active' THEN 6
+                WHEN 'completed' THEN 7
+                ELSE 8
+            END DESC
+        SEPARATOR ',') as investment_statuses
     FROM client_investments ci
     JOIN investments i ON ci.investment_id = i.id
     WHERE ci.client_id = ?
     GROUP BY i.id
-    ORDER BY invested_in_project DESC";
+    ORDER BY MAX(ci.created_at) DESC";
 
     $portfolioStmt = $conn->prepare($portfolioSQL);
     
@@ -142,7 +154,7 @@ try {
     
     // For portfolio, we'll use a different approach since it has multiple rows
     // Store results in an array
-    $portfolioStmt->bind_result($project_title, $total_goal, $profit_percent, $profit_percent_min, $profit_percent_max, $start_date, $end_date, $invested_in_project, $expected_profit_from_project, $investment_count);
+    $portfolioStmt->bind_result($project_title, $total_goal, $profit_percent, $profit_percent_min, $profit_percent_max, $start_date, $end_date, $invested_in_project, $expected_profit_from_project, $investment_count, $investment_statuses);
     
     $portfolioData = [];
     while ($portfolioStmt->fetch()) {
@@ -156,7 +168,8 @@ try {
             'end_date' => $end_date,
             'invested_in_project' => $invested_in_project,
             'expected_profit_from_project' => $expected_profit_from_project,
-            'investment_count' => $investment_count
+            'investment_count' => $investment_count,
+            'investment_statuses' => $investment_statuses
         ];
     }
     $portfolioStmt->close();
@@ -280,7 +293,7 @@ try {
                                     <th>Your Investment</th>
                                     <th>Expected Profit</th>
                                     <th>Project Duration</th>
-                                    <th>Transactions</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -300,6 +313,36 @@ try {
                                             $profitDisplay = number_format($portfolio['profit_percent'], 1) . '%';
                                             $expectedProfitDisplay = '$' . number_format($portfolio['expected_profit_from_project'], 0);
                                         }
+                                        // Determine investment status based on client_investments status
+                                        // If multiple investments in same project, show the most relevant status
+                                        $statuses = explode(',', $portfolio['investment_statuses']);
+                                        $primaryStatus = $statuses[0]; // Already ordered by priority in SQL
+                                        
+                                        switch($primaryStatus) {
+                                          case 'pending':
+                                            $statusLabel = '<span class="label label-warning">Pending Approval</span>';
+                                            break;
+                                          case 'approved':
+                                            $statusLabel = '<span class="label label-info">Awaiting Payment</span>';
+                                            break;
+                                          case 'payment_partial':
+                                            $statusLabel = '<span class="label label-primary">Partial Payment</span>';
+                                            break;
+                                          case 'payment_pending':
+                                            $statusLabel = '<span class="label label-success">Fully Paid - Pending Activation</span>';
+                                            break;
+                                          case 'rejected':
+                                            $statusLabel = '<span class="label label-danger">Rejected</span>';
+                                            break;
+                                          case 'active':
+                                            $statusLabel = '<span class="label label-success">Active</span>';
+                                            break;
+                                          case 'completed':
+                                            $statusLabel = '<span class="label label-default">Completed</span>';
+                                            break;
+                                          default:
+                                            $statusLabel = '<span class="label label-default">Unknown</span>';
+                                        }
                                     ?>
                                         <tr>
                                             <td>
@@ -313,7 +356,7 @@ try {
                                                 <?= date('M d, Y', strtotime($portfolio['start_date'])) ?><br>
                                                 <small class="text-muted">to <?= date('M d, Y', strtotime($portfolio['end_date'])) ?></small>
                                             </td>
-                                            <td><span class="badge bg-blue"><?= $portfolio['investment_count'] ?></span></td>
+                                            <td><?= $statusLabel ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php endif; ?>

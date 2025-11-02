@@ -296,10 +296,15 @@ function showProjectDetails(projectId) {
     document.getElementById('projectDetailsContent').innerHTML = '<div class="text-center"><i class="fa fa-spinner fa-spin fa-3x"></i><p class="mt-2">Loading project details...</p></div>';
     $('#projectDetailsModal').modal('show');
     
-    // You can add AJAX call here to load detailed project information
-    setTimeout(function() {
-        document.getElementById('projectDetailsContent').innerHTML = '<p>Detailed project information would be loaded here via AJAX.</p>';
-    }, 1000);
+    // Load project details via AJAX
+    fetch('get-project-details.php?project_id=' + projectId)
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('projectDetailsContent').innerHTML = data;
+        })
+        .catch(error => {
+            document.getElementById('projectDetailsContent').innerHTML = '<div class="alert alert-danger">Error loading project details: ' + error + '</div>';
+        });
 }
 
 // Calculate investment summary when amount changes

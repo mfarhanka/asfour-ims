@@ -158,7 +158,7 @@ $sql = "SELECT ci.id, ci.client_id, ci.investment_id, ci.invested_amount, ci.inv
                ci.total_paid, ci.remaining_amount, ci.is_fully_paid, ci.agreement_uploaded, ci.agreement_document,
                ci.created_at, ci.status,
                c.name as client_name, c.username as client_username, c.email as client_email, c.phone as client_phone,
-               i.title as investment_title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date
+               i.title as investment_title, i.total_goal, i.profit_percent, i.start_date, i.end_date
         FROM client_investments ci 
         LEFT JOIN clients c ON ci.client_id = c.id 
         LEFT JOIN investments i ON ci.investment_id = i.id 
@@ -194,23 +194,8 @@ $result = $conn->query($sql);
           
           <div class="row">
             <?php while($row = $result->fetch_assoc()): 
-              // Calculate profit
-              $profitMin = $row['profit_percent_min'] ?? $row['profit_percent'];
-              $profitMax = $row['profit_percent_max'] ?? $row['profit_percent'];
-              $expectedProfitMin = ($row['invested_amount'] * $profitMin) / 100;
-              $expectedProfitMax = ($row['invested_amount'] * $profitMax) / 100;
-              
-              // Format profit display
-              $profitDisplay = '';
-              $expectedProfitDisplay = '';
-              if ($profitMin && $profitMax && $profitMin != $profitMax) {
-                  $profitDisplay = number_format($profitMin, 1) . '% - ' . number_format($profitMax, 1) . '%';
-                  $expectedProfitDisplay = '$' . number_format($expectedProfitMin, 2) . ' - $' . number_format($expectedProfitMax, 2);
-              } else {
-                  $profitDisplay = number_format($row['profit_percent'], 1) . '%';
-                  $expectedProfitDisplay = '$' . number_format($expectedProfitMin, 2);
-              }
-              
+              $expectedProfit = ($row['invested_amount'] * $row['profit_percent']) / 100;
+              $totalReturn = $row['invested_amount'] + $expectedProfit;
               $paymentProgress = ($row['total_paid'] / $row['invested_amount']) * 100;
               
               // Get pending payment transactions for this investment
@@ -275,8 +260,8 @@ $result = $conn->query($sql);
                           <tr>
                             <th>Expected Profit</th>
                             <td>
-                              <span class="text-success"><?= $expectedProfitDisplay ?></span> 
-                              <small class="text-muted">(<?= $profitDisplay ?>)</small>
+                              <span class="text-success">$<?= number_format($expectedProfit, 2) ?></span> 
+                              <small class="text-muted">(<?= $row['profit_percent'] ?>%)</small>
                             </td>
                           </tr>
                         </table>
