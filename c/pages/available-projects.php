@@ -9,6 +9,8 @@ $projectsSQL = "SELECT
     i.title,
     i.total_goal,
     i.profit_percent,
+    i.profit_percent_min,
+    i.profit_percent_max,
     i.start_date,
     i.end_date,
     i.created_at,
@@ -81,6 +83,17 @@ $stmt->close();
         $projectStarted = strtotime($project['start_date']) <= time();
         $projectEnded = strtotime($project['end_date']) < time();
         
+        // Handle profit range or fixed profit
+        $profitPercentMin = $project['profit_percent_min'] ?? $project['profit_percent'];
+        $profitPercentMax = $project['profit_percent_max'] ?? $project['profit_percent'];
+        $isProfitRange = ($profitPercentMin != $profitPercentMax);
+        
+        if ($isProfitRange) {
+            $profitDisplay = number_format($profitPercentMin, 1) . '% - ' . number_format($profitPercentMax, 1) . '%';
+        } else {
+            $profitDisplay = number_format($project['profit_percent'], 1) . '%';
+        }
+        
         // Clients can invest multiple times in the same project
         if ($projectEnded) {
           $statusLabel = '<span class="label label-default">Ended</span>';
@@ -118,7 +131,7 @@ $stmt->close();
                 </div>
                 <div class="col-xs-6">
                   <strong>Profit Rate:</strong><br>
-                  <span class="text-success"><?= number_format($project['profit_percent'], 1) ?>%</span>
+                  <span class="text-success"><?= $profitDisplay ?></span>
                 </div>
               </div>
               
@@ -156,7 +169,7 @@ $stmt->close();
               
               <div style="margin-top: 20px;">
                 <?php if ($canInvest && !$projectEnded): ?>
-                  <button class="btn btn-primary btn-sm" onclick="showInvestModal(<?= $project['id'] ?>, '<?= htmlspecialchars($project['title']) ?>', <?= $project['total_goal'] ?>, <?= $project['profit_percent'] ?>)">
+                  <button class="btn btn-primary btn-sm" onclick="showInvestModal(<?= $project['id'] ?>, '<?= htmlspecialchars($project['title']) ?>', <?= $project['total_goal'] ?>, <?= $profitPercentMin ?>, <?= $profitPercentMax ?>)">
                     <i class="fa fa-plus"></i> <?= $isInvested ? 'Invest Again' : 'Invest Now' ?>
                   </button>
                 <?php else: ?>
@@ -263,12 +276,14 @@ $stmt->close();
 </div>
 
 <script>
-let currentProfitPercent = 0;
+let currentProfitPercentMin = 0;
+let currentProfitPercentMax = 0;
 
-function showInvestModal(investmentId, title, goal, profitPercent) {
+function showInvestModal(investmentId, title, goal, profitPercentMin, profitPercentMax) {
     document.getElementById('investment_id').value = investmentId;
     document.getElementById('project_title').value = title;
-    currentProfitPercent = profitPercent;
+    currentProfitPercentMin = profitPercentMin;
+    currentProfitPercentMax = profitPercentMax;
     
     // Clear previous values
     document.getElementById('investment_amount').value = '';
@@ -291,14 +306,30 @@ function showProjectDetails(projectId) {
 document.getElementById('investment_amount').addEventListener('input', function() {
     const amount = parseFloat(this.value);
     if (amount >= 100) {
-        const expectedProfit = amount * (currentProfitPercent / 100);
-        const totalReturn = amount + expectedProfit;
+        const isProfitRange = (currentProfitPercentMin !== currentProfitPercentMax);
+        
+        let profitDisplay, returnDisplay;
+        if (isProfitRange) {
+            const expectedProfitMin = amount * (currentProfitPercentMin / 100);
+            const expectedProfitMax = amount * (currentProfitPercentMax / 100);
+            const totalReturnMin = amount + expectedProfitMin;
+            const totalReturnMax = amount + expectedProfitMax;
+            
+            profitDisplay = `$${expectedProfitMin.toFixed(2)} - $${expectedProfitMax.toFixed(2)}`;
+            returnDisplay = `$${totalReturnMin.toFixed(2)} - $${totalReturnMax.toFixed(2)}`;
+        } else {
+            const expectedProfit = amount * (currentProfitPercentMin / 100);
+            const totalReturn = amount + expectedProfit;
+            
+            profitDisplay = `$${expectedProfit.toFixed(2)}`;
+            returnDisplay = `$${totalReturn.toFixed(2)}`;
+        }
         
         const summaryHtml = `
             <div class="row">
                 <div class="col-xs-4"><strong>Investment:</strong><br>$${amount.toFixed(2)}</div>
-                <div class="col-xs-4"><strong>Expected Profit:</strong><br>$${expectedProfit.toFixed(2)}</div>
-                <div class="col-xs-4"><strong>Total Return:</strong><br>$${totalReturn.toFixed(2)}</div>
+                <div class="col-xs-4"><strong>Expected Profit:</strong><br>${profitDisplay}</div>
+                <div class="col-xs-4"><strong>Total Return:</strong><br>${returnDisplay}</div>
             </div>
         `;
         

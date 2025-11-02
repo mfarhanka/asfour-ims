@@ -118,6 +118,8 @@ try {
         i.title as project_title,
         i.total_goal,
         i.profit_percent,
+        i.profit_percent_min,
+        i.profit_percent_max,
         i.start_date,
         i.end_date,
         SUM(ci.invested_amount) as invested_in_project,
@@ -140,7 +142,7 @@ try {
     
     // For portfolio, we'll use a different approach since it has multiple rows
     // Store results in an array
-    $portfolioStmt->bind_result($project_title, $total_goal, $profit_percent, $start_date, $end_date, $invested_in_project, $expected_profit_from_project, $investment_count);
+    $portfolioStmt->bind_result($project_title, $total_goal, $profit_percent, $profit_percent_min, $profit_percent_max, $start_date, $end_date, $invested_in_project, $expected_profit_from_project, $investment_count);
     
     $portfolioData = [];
     while ($portfolioStmt->fetch()) {
@@ -148,6 +150,8 @@ try {
             'project_title' => $project_title,
             'total_goal' => $total_goal,
             'profit_percent' => $profit_percent,
+            'profit_percent_min' => $profit_percent_min,
+            'profit_percent_max' => $profit_percent_max,
             'start_date' => $start_date,
             'end_date' => $end_date,
             'invested_in_project' => $invested_in_project,
@@ -281,15 +285,30 @@ try {
                             </thead>
                             <tbody>
                                 <?php if (isset($portfolioData) && count($portfolioData) > 0): ?>
-                                    <?php foreach($portfolioData as $portfolio): ?>
+                                    <?php foreach($portfolioData as $portfolio): 
+                                        // Handle profit range or fixed profit
+                                        $profitPercentMin = $portfolio['profit_percent_min'] ?? $portfolio['profit_percent'];
+                                        $profitPercentMax = $portfolio['profit_percent_max'] ?? $portfolio['profit_percent'];
+                                        $isProfitRange = ($profitPercentMin != $profitPercentMax);
+                                        
+                                        if ($isProfitRange) {
+                                            $profitDisplay = number_format($profitPercentMin, 1) . '% - ' . number_format($profitPercentMax, 1) . '%';
+                                            $profitMin = $portfolio['invested_in_project'] * ($profitPercentMin / 100);
+                                            $profitMax = $portfolio['invested_in_project'] * ($profitPercentMax / 100);
+                                            $expectedProfitDisplay = '$' . number_format($profitMin, 0) . ' - $' . number_format($profitMax, 0);
+                                        } else {
+                                            $profitDisplay = number_format($portfolio['profit_percent'], 1) . '%';
+                                            $expectedProfitDisplay = '$' . number_format($portfolio['expected_profit_from_project'], 0);
+                                        }
+                                    ?>
                                         <tr>
                                             <td>
                                                 <strong><?= htmlspecialchars($portfolio['project_title']) ?></strong>
                                             </td>
                                             <td>$<?= number_format($portfolio['total_goal'], 0) ?></td>
-                                            <td><span class="label label-success"><?= number_format($portfolio['profit_percent'], 1) ?>%</span></td>
+                                            <td><span class="label label-success"><?= $profitDisplay ?></span></td>
                                             <td><strong class="text-primary">$<?= number_format($portfolio['invested_in_project'], 0) ?></strong></td>
-                                            <td><strong class="text-success">$<?= number_format($portfolio['expected_profit_from_project'], 0) ?></strong></td>
+                                            <td><strong class="text-success"><?= $expectedProfitDisplay ?></strong></td>
                                             <td>
                                                 <?= date('M d, Y', strtotime($portfolio['start_date'])) ?><br>
                                                 <small class="text-muted">to <?= date('M d, Y', strtotime($portfolio['end_date'])) ?></small>

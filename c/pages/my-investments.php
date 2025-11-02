@@ -20,6 +20,8 @@ $investmentsSQL = "SELECT
     i.title as project_title,
     i.total_goal,
     i.profit_percent,
+    i.profit_percent_min,
+    i.profit_percent_max,
     i.start_date,
     i.end_date,
     c.name as client_name
@@ -71,7 +73,22 @@ $investmentsResult = $stmt->get_result();
               <tbody>
                 <?php while($investment = $investmentsResult->fetch_assoc()): ?>
                   <?php 
-                    $expectedProfit = $investment['invested_amount'] * ($investment['profit_percent'] / 100);
+                    // Handle profit range or fixed profit
+                    $profitPercentMin = $investment['profit_percent_min'] ?? $investment['profit_percent'];
+                    $profitPercentMax = $investment['profit_percent_max'] ?? $investment['profit_percent'];
+                    $isProfitRange = ($profitPercentMin != $profitPercentMax);
+                    
+                    if ($isProfitRange) {
+                        $profitMin = $investment['invested_amount'] * ($profitPercentMin / 100);
+                        $profitMax = $investment['invested_amount'] * ($profitPercentMax / 100);
+                        $profitDisplay = number_format($profitPercentMin, 1) . '% - ' . number_format($profitPercentMax, 1) . '%';
+                        $expectedProfitDisplay = '$' . number_format($profitMin, 2) . ' - $' . number_format($profitMax, 2);
+                    } else {
+                        $expectedProfit = $investment['invested_amount'] * ($investment['profit_percent'] / 100);
+                        $profitDisplay = number_format($investment['profit_percent'], 1) . '%';
+                        $expectedProfitDisplay = '$' . number_format($expectedProfit, 2);
+                    }
+                    
                     $projectStarted = strtotime($investment['start_date']) <= time();
                     $projectEnded = strtotime($investment['end_date']) < time();
                     
@@ -130,8 +147,8 @@ $investmentsResult = $stmt->get_result();
                       <?= date('M d, Y', strtotime($investment['investment_date'])) ?>
                       <br><small class="text-muted"><?= date('g:i A', strtotime($investment['created_at'])) ?></small>
                     </td>
-                    <td><span class="label label-success"><?= number_format($investment['profit_percent'], 1) ?>%</span></td>
-                    <td><strong class="text-success">$<?= number_format($expectedProfit, 2) ?></strong></td>
+                    <td><span class="label label-success"><?= $profitDisplay ?></span></td>
+                    <td><strong class="text-success"><?= $expectedProfitDisplay ?></strong></td>
                     <td><?= $status ?></td>
                     <td>
                       <?php if ($canUploadPayment && $investment['remaining_amount'] > 0): ?>

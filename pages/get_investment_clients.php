@@ -47,8 +47,25 @@ $result = $stmt->get_result();
 // Calculate progress and expected profits
 $progressPercent = ($investment['total_invested'] / $investment['total_goal']) * 100;
 $remainingAmount = $investment['total_goal'] - $investment['total_invested'];
-$expectedTotalProfit = ($investment['total_goal'] * $investment['profit_percent']) / 100;
-$currentExpectedProfit = ($investment['total_invested'] * $investment['profit_percent']) / 100;
+
+// Handle profit range or fixed profit
+$profitPercentMin = $investment['profit_percent_min'] ?? $investment['profit_percent'];
+$profitPercentMax = $investment['profit_percent_max'] ?? $investment['profit_percent'];
+$isProfitRange = ($profitPercentMin != $profitPercentMax);
+
+if ($isProfitRange) {
+    // Calculate profit range
+    $expectedTotalProfitMin = ($investment['total_goal'] * $profitPercentMin) / 100;
+    $expectedTotalProfitMax = ($investment['total_goal'] * $profitPercentMax) / 100;
+    $currentExpectedProfitMin = ($investment['total_invested'] * $profitPercentMin) / 100;
+    $currentExpectedProfitMax = ($investment['total_invested'] * $profitPercentMax) / 100;
+    $profitDisplay = number_format($profitPercentMin, 2) . '% - ' . number_format($profitPercentMax, 2) . '%';
+} else {
+    // Fixed profit
+    $expectedTotalProfit = ($investment['total_goal'] * $investment['profit_percent']) / 100;
+    $currentExpectedProfit = ($investment['total_invested'] * $investment['profit_percent']) / 100;
+    $profitDisplay = number_format($investment['profit_percent'], 2) . '%';
+}
 
 // Calculate time-based information
 $startDate = new DateTime($investment['start_date']);
@@ -102,7 +119,7 @@ echo '<tr><td><strong>Amount Raised:</strong></td><td>$' . number_format($invest
 echo '<tr><td><strong>Remaining:</strong></td><td>$' . number_format($remainingAmount, 2) . '</td></tr>';
 echo '<tr><td><strong>Progress:</strong></td><td>' . number_format($progressPercent, 1) . '%</td></tr>';
 echo '<tr><td><strong>Total Investors:</strong></td><td>' . $investment['total_investors'] . '</td></tr>';
-echo '<tr><td><strong>Profit Rate:</strong></td><td>' . number_format($investment['profit_percent'], 2) . '%</td></tr>';
+echo '<tr><td><strong>Profit Rate:</strong></td><td>' . $profitDisplay . '</td></tr>';
 echo '</table>';
 echo '</div>';
 echo '</div>';
@@ -136,9 +153,14 @@ echo '<div class="card-header bg-warning text-dark"><h6><i class="fa fa-calculat
 echo '<div class="card-body">';
 echo '<table class="table table-sm">';
 echo '<tr><td><strong>Total Investment Goal:</strong></td><td>$' . number_format($investment['total_goal'], 2) . '</td></tr>';
-echo '<tr><td><strong>Profit Rate:</strong></td><td>' . number_format($investment['profit_percent'], 2) . '%</td></tr>';
-echo '<tr><td><strong>Expected Total Profit:</strong></td><td class="text-success"><strong>$' . number_format($expectedTotalProfit, 2) . '</strong></td></tr>';
-echo '<tr><td><strong>Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_goal'] + $expectedTotalProfit, 2) . '</strong></td></tr>';
+echo '<tr><td><strong>Profit Rate:</strong></td><td>' . $profitDisplay . '</td></tr>';
+if ($isProfitRange) {
+    echo '<tr><td><strong>Expected Total Profit:</strong></td><td class="text-success"><strong>$' . number_format($expectedTotalProfitMin, 2) . ' - $' . number_format($expectedTotalProfitMax, 2) . '</strong></td></tr>';
+    echo '<tr><td><strong>Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_goal'] + $expectedTotalProfitMin, 2) . ' - $' . number_format($investment['total_goal'] + $expectedTotalProfitMax, 2) . '</strong></td></tr>';
+} else {
+    echo '<tr><td><strong>Expected Total Profit:</strong></td><td class="text-success"><strong>$' . number_format($expectedTotalProfit, 2) . '</strong></td></tr>';
+    echo '<tr><td><strong>Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_goal'] + $expectedTotalProfit, 2) . '</strong></td></tr>';
+}
 echo '</table>';
 echo '</div>';
 echo '</div>';
@@ -150,9 +172,14 @@ echo '<div class="card-header bg-secondary text-white"><h6><i class="fa fa-money
 echo '<div class="card-body">';
 echo '<table class="table table-sm">';
 echo '<tr><td><strong>Current Investment:</strong></td><td>$' . number_format($investment['total_invested'], 2) . '</td></tr>';
-echo '<tr><td><strong>Profit Rate:</strong></td><td>' . number_format($investment['profit_percent'], 2) . '%</td></tr>';
-echo '<tr><td><strong>Current Expected Profit:</strong></td><td class="text-success"><strong>$' . number_format($currentExpectedProfit, 2) . '</strong></td></tr>';
-echo '<tr><td><strong>Current Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_invested'] + $currentExpectedProfit, 2) . '</strong></td></tr>';
+echo '<tr><td><strong>Profit Rate:</strong></td><td>' . $profitDisplay . '</td></tr>';
+if ($isProfitRange) {
+    echo '<tr><td><strong>Current Expected Profit:</strong></td><td class="text-success"><strong>$' . number_format($currentExpectedProfitMin, 2) . ' - $' . number_format($currentExpectedProfitMax, 2) . '</strong></td></tr>';
+    echo '<tr><td><strong>Current Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_invested'] + $currentExpectedProfitMin, 2) . ' - $' . number_format($investment['total_invested'] + $currentExpectedProfitMax, 2) . '</strong></td></tr>';
+} else {
+    echo '<tr><td><strong>Current Expected Profit:</strong></td><td class="text-success"><strong>$' . number_format($currentExpectedProfit, 2) . '</strong></td></tr>';
+    echo '<tr><td><strong>Current Total Return:</strong></td><td class="text-primary"><strong>$' . number_format($investment['total_invested'] + $currentExpectedProfit, 2) . '</strong></td></tr>';
+}
 echo '</table>';
 echo '</div>';
 echo '</div>';

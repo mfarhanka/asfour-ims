@@ -20,13 +20,23 @@ if ($_POST && isset($_POST['deleteInvestment'])) {
 if ($_POST && isset($_POST['investmentTitle'])) {
     $title = trim($_POST['investmentTitle']);
     $totalGoal = floatval($_POST['investmentTotalGoal']);
-    $profitPercent = floatval($_POST['investmentProfitPercent']);
+    $profitType = trim($_POST['profitType']);
     $startDate = trim($_POST['investmentStartDate']);
     $endDate = trim($_POST['investmentEndDate']);
     
-    $insertSQL = "INSERT INTO investments (title, total_goal, profit_percent, start_date, end_date) VALUES (?, ?, ?, ?, ?)";
+    if ($profitType === 'fixed') {
+        $profitPercent = floatval($_POST['investmentProfitPercent']);
+        $profitPercentMin = $profitPercent;
+        $profitPercentMax = $profitPercent;
+    } else {
+        $profitPercent = floatval($_POST['investmentProfitPercentMin']); // Store min as default
+        $profitPercentMin = floatval($_POST['investmentProfitPercentMin']);
+        $profitPercentMax = floatval($_POST['investmentProfitPercentMax']);
+    }
+    
+    $insertSQL = "INSERT INTO investments (title, total_goal, profit_percent, profit_percent_min, profit_percent_max, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($insertSQL);
-    $stmt->bind_param("sddss", $title, $totalGoal, $profitPercent, $startDate, $endDate);
+    $stmt->bind_param("sddddss", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $startDate, $endDate);
     
     if ($stmt->execute()) {
         echo "<script>alert('Investment added successfully!'); window.location.href = 'index.php?p=investment-list';</script>";
@@ -41,13 +51,23 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
     $investmentId = intval($_POST['editInvestmentId']);
     $title = trim($_POST['editInvestmentTitle']);
     $totalGoal = floatval($_POST['editInvestmentTotalGoal']);
-    $profitPercent = floatval($_POST['editInvestmentProfitPercent']);
+    $profitType = trim($_POST['editProfitType']);
     $startDate = trim($_POST['editInvestmentStartDate']);
     $endDate = trim($_POST['editInvestmentEndDate']);
     
-    $updateSQL = "UPDATE investments SET title = ?, total_goal = ?, profit_percent = ?, start_date = ?, end_date = ? WHERE id = ?";
+    if ($profitType === 'fixed') {
+        $profitPercent = floatval($_POST['editInvestmentProfitPercent']);
+        $profitPercentMin = $profitPercent;
+        $profitPercentMax = $profitPercent;
+    } else {
+        $profitPercent = floatval($_POST['editInvestmentProfitPercentMin']); // Store min as default
+        $profitPercentMin = floatval($_POST['editInvestmentProfitPercentMin']);
+        $profitPercentMax = floatval($_POST['editInvestmentProfitPercentMax']);
+    }
+    
+    $updateSQL = "UPDATE investments SET title = ?, total_goal = ?, profit_percent = ?, profit_percent_min = ?, profit_percent_max = ?, start_date = ?, end_date = ? WHERE id = ?";
     $stmt = $conn->prepare($updateSQL);
-    $stmt->bind_param("sddssi", $title, $totalGoal, $profitPercent, $startDate, $endDate, $investmentId);
+    $stmt->bind_param("sddddssi", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $startDate, $endDate, $investmentId);
     
     if ($stmt->execute()) {
         echo "<script>alert('Investment updated successfully!'); window.location.href = 'index.php?p=investment-list';</script>";
@@ -57,11 +77,11 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
     $stmt->close();
 }
 
-$sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.start_date, i.end_date, i.created_at,
+$sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date, i.created_at,
                COALESCE(SUM(ci.invested_amount), 0) as total_invested
         FROM investments i 
         LEFT JOIN client_investments ci ON i.id = ci.investment_id 
-        GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.start_date, i.end_date, i.created_at
+        GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date, i.created_at
         ORDER BY i.start_date DESC";
 $result = $conn->query($sql);
 ?>
@@ -103,8 +123,29 @@ $result = $conn->query($sql);
                   <input type="number" step="0.01" class="form-control" id="investmentTotalGoal" name="investmentTotalGoal" required>
                 </div>
                 <div class="form-group">
+                  <label>Profit Type</label>
+                  <div>
+                    <label class="radio-inline">
+                      <input type="radio" name="profitType" value="fixed" checked onchange="toggleProfitFields(false)"> Fixed Percentage
+                    </label>
+                    <label class="radio-inline">
+                      <input type="radio" name="profitType" value="range" onchange="toggleProfitFields(false)"> Range (e.g., 20% - 25%)
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group" id="fixedProfitGroup">
                   <label for="investmentProfitPercent">Investment Profit Percent (%)</label>
-                  <input type="number" step="0.01" min="0" max="100" class="form-control" id="investmentProfitPercent" name="investmentProfitPercent" required>
+                  <input type="number" step="0.01" min="0" max="100" class="form-control" id="investmentProfitPercent" name="investmentProfitPercent">
+                </div>
+                <div id="rangeProfitGroup" style="display: none;">
+                  <div class="form-group">
+                    <label for="investmentProfitPercentMin">Minimum Profit Percent (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" class="form-control" id="investmentProfitPercentMin" name="investmentProfitPercentMin" placeholder="e.g., 20">
+                  </div>
+                  <div class="form-group">
+                    <label for="investmentProfitPercentMax">Maximum Profit Percent (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" class="form-control" id="investmentProfitPercentMax" name="investmentProfitPercentMax" placeholder="e.g., 25">
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="investmentStartDate">Start Date</label>
@@ -146,8 +187,29 @@ $result = $conn->query($sql);
                   <input type="number" step="0.01" class="form-control" id="editInvestmentTotalGoal" name="editInvestmentTotalGoal" required>
                 </div>
                 <div class="form-group">
+                  <label>Profit Type</label>
+                  <div>
+                    <label class="radio-inline">
+                      <input type="radio" name="editProfitType" value="fixed" checked onchange="toggleProfitFields(true)"> Fixed Percentage
+                    </label>
+                    <label class="radio-inline">
+                      <input type="radio" name="editProfitType" value="range" onchange="toggleProfitFields(true)"> Range (e.g., 20% - 25%)
+                    </label>
+                  </div>
+                </div>
+                <div class="form-group" id="editFixedProfitGroup">
                   <label for="editInvestmentProfitPercent">Investment Profit Percent (%)</label>
-                  <input type="number" step="0.01" min="0" max="100" class="form-control" id="editInvestmentProfitPercent" name="editInvestmentProfitPercent" required>
+                  <input type="number" step="0.01" min="0" max="100" class="form-control" id="editInvestmentProfitPercent" name="editInvestmentProfitPercent">
+                </div>
+                <div id="editRangeProfitGroup" style="display: none;">
+                  <div class="form-group">
+                    <label for="editInvestmentProfitPercentMin">Minimum Profit Percent (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" class="form-control" id="editInvestmentProfitPercentMin" name="editInvestmentProfitPercentMin" placeholder="e.g., 20">
+                  </div>
+                  <div class="form-group">
+                    <label for="editInvestmentProfitPercentMax">Maximum Profit Percent (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" class="form-control" id="editInvestmentProfitPercentMax" name="editInvestmentProfitPercentMax" placeholder="e.g., 25">
+                  </div>
                 </div>
                 <div class="form-group">
                   <label for="editInvestmentStartDate">Start Date</label>
@@ -212,6 +274,14 @@ $result = $conn->query($sql);
               <?php while($row = $result->fetch_assoc()): 
                 $progress_percent = $row['total_goal'] > 0 ? ($row['total_invested'] / $row['total_goal']) * 100 : 0;
                 $progress_class = $progress_percent >= 100 ? 'success' : ($progress_percent >= 50 ? 'warning' : 'info');
+                
+                // Format profit percent display
+                $profitDisplay = '';
+                if ($row['profit_percent_min'] && $row['profit_percent_max'] && $row['profit_percent_min'] != $row['profit_percent_max']) {
+                    $profitDisplay = number_format($row['profit_percent_min'], 1) . '% - ' . number_format($row['profit_percent_max'], 1) . '%';
+                } else {
+                    $profitDisplay = number_format($row['profit_percent'], 1) . '%';
+                }
               ?>
                 <tr>
                   <td><?= htmlspecialchars($row['id']) ?></td>
@@ -225,7 +295,7 @@ $result = $conn->query($sql);
                       </div>
                     </div>
                   </td>
-                  <td><?= number_format($row['profit_percent'], 2) ?>%</td>
+                  <td><?= $profitDisplay ?></td>
                   <td><?= htmlspecialchars($row['start_date']) ?></td>
                   <td><?= htmlspecialchars($row['end_date']) ?></td>
                   <td><?= htmlspecialchars($row['created_at']) ?></td>
@@ -233,7 +303,7 @@ $result = $conn->query($sql);
                     <button type="button" class="btn btn-info btn-sm" onclick="viewInvestmentClients(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>')" title="View Clients" style="margin-right: 5px;">
                       <i class="fa fa-eye"></i>
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="editInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>', <?= $row['total_goal'] ?>, <?= $row['profit_percent'] ?>, '<?= htmlspecialchars($row['start_date']) ?>', '<?= htmlspecialchars($row['end_date']) ?>')" title="Edit Investment" style="margin-right: 5px;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="editInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>', <?= $row['total_goal'] ?>, <?= $row['profit_percent'] ?>, <?= $row['profit_percent_min'] ?? 'null' ?>, <?= $row['profit_percent_max'] ?? 'null' ?>, '<?= htmlspecialchars($row['start_date']) ?>', '<?= htmlspecialchars($row['end_date']) ?>')" title="Edit Investment" style="margin-right: 5px;">
                       <i class="fa fa-edit"></i>
                     </button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>')" title="Remove Investment">
@@ -253,6 +323,28 @@ $result = $conn->query($sql);
 </div>
 
 <script>
+function toggleProfitFields(isEdit) {
+    var prefix = isEdit ? 'edit' : '';
+    var profitType = document.querySelector('input[name="' + (isEdit ? 'editProfitType' : 'profitType') + '"]:checked').value;
+    
+    var fixedGroup = document.getElementById(prefix + (isEdit ? 'F' : 'f') + 'ixedProfitGroup');
+    var rangeGroup = document.getElementById(prefix + (isEdit ? 'R' : 'r') + 'angeProfitGroup');
+    
+    if (profitType === 'fixed') {
+        fixedGroup.style.display = 'block';
+        rangeGroup.style.display = 'none';
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercent').required = true;
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercentMin').required = false;
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercentMax').required = false;
+    } else {
+        fixedGroup.style.display = 'none';
+        rangeGroup.style.display = 'block';
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercent').required = false;
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercentMin').required = true;
+        document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentProfitPercentMax').required = true;
+    }
+}
+
 function viewInvestmentClients(investmentId, investmentTitle) {
     // Set modal title
     document.getElementById('viewClientsModalLabel').textContent = 'Clients Invested in: ' + investmentTitle;
@@ -274,14 +366,27 @@ function viewInvestmentClients(investmentId, investmentTitle) {
         });
 }
 
-function editInvestment(investmentId, title, totalGoal, profitPercent, startDate, endDate) {
+function editInvestment(investmentId, title, totalGoal, profitPercent, profitPercentMin, profitPercentMax, startDate, endDate) {
     // Populate the edit modal with current investment data
     document.getElementById('editInvestmentId').value = investmentId;
     document.getElementById('editInvestmentTitle').value = title;
     document.getElementById('editInvestmentTotalGoal').value = totalGoal;
-    document.getElementById('editInvestmentProfitPercent').value = profitPercent;
     document.getElementById('editInvestmentStartDate').value = startDate;
     document.getElementById('editInvestmentEndDate').value = endDate;
+    
+    // Determine if it's a fixed or range profit
+    if (profitPercentMin && profitPercentMax && profitPercentMin !== profitPercentMax) {
+        // Range profit
+        document.querySelector('input[name="editProfitType"][value="range"]').checked = true;
+        document.getElementById('editInvestmentProfitPercentMin').value = profitPercentMin;
+        document.getElementById('editInvestmentProfitPercentMax').value = profitPercentMax;
+        toggleProfitFields(true);
+    } else {
+        // Fixed profit
+        document.querySelector('input[name="editProfitType"][value="fixed"]').checked = true;
+        document.getElementById('editInvestmentProfitPercent').value = profitPercent;
+        toggleProfitFields(true);
+    }
     
     // Show the edit modal
     $('#editInvestmentModal').modal('show');
