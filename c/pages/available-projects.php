@@ -11,6 +11,7 @@ $projectsSQL = "SELECT
     i.profit_percent,
     i.profit_percent_min,
     i.profit_percent_max,
+    i.duration,
     i.start_date,
     i.end_date,
     i.created_at,
@@ -94,6 +95,28 @@ $stmt->close();
             $profitDisplay = number_format($project['profit_percent'], 1) . '%';
         }
         
+        // Calculate project period if duration is set
+        $projectPeriodDisplay = null;
+        if ($project['duration'] && $project['end_date']) {
+            $investmentEndDate = new DateTime($project['end_date']);
+            $projectStartDate = clone $investmentEndDate;
+            $projectStartDate->modify('+1 day');
+            
+            // Parse duration
+            $months = 0;
+            if (strpos($project['duration'], 'month') !== false) {
+                $months = intval($project['duration']);
+            } elseif (strpos($project['duration'], 'year') !== false) {
+                $months = intval($project['duration']) * 12;
+            }
+            
+            if ($months > 0) {
+                $projectEndDate = clone $projectStartDate;
+                $projectEndDate->modify("+{$months} months");
+                $projectPeriodDisplay = $projectStartDate->format('M d, Y') . ' - ' . $projectEndDate->format('M d, Y');
+            }
+        }
+        
         // Clients can invest multiple times in the same project
         if ($projectEnded) {
           $statusLabel = '<span class="label label-default">Ended</span>';
@@ -136,15 +159,26 @@ $stmt->close();
               </div>
               
               <div class="row" style="margin-bottom: 15px;">
-                <div class="col-xs-6">
-                  <strong>Start Date:</strong><br>
-                  <small><?= date('M d, Y', strtotime($project['start_date'])) ?></small>
-                </div>
-                <div class="col-xs-6">
-                  <strong>End Date:</strong><br>
-                  <small><?= date('M d, Y', strtotime($project['end_date'])) ?></small>
+                <div class="col-xs-12">
+                  <strong>Investment Period:</strong><br>
+                  <small><?= date('M d, Y', strtotime($project['start_date'])) ?> - <?= date('M d, Y', strtotime($project['end_date'])) ?></small>
                 </div>
               </div>
+              
+              <?php if ($project['duration']): ?>
+              <div class="row" style="margin-bottom: 15px;">
+                <div class="col-xs-6">
+                  <strong>Project Duration:</strong><br>
+                  <small><?= htmlspecialchars($project['duration']) ?></small>
+                </div>
+                <?php if ($projectPeriodDisplay): ?>
+                <div class="col-xs-6">
+                  <strong>Project Period:</strong><br>
+                  <small><?= $projectPeriodDisplay ?></small>
+                </div>
+                <?php endif; ?>
+              </div>
+              <?php endif; ?>
               
               <div class="progress-info">
                 <div class="row">

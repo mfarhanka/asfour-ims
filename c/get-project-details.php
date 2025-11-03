@@ -72,6 +72,28 @@ if ($currentDate > $endDate) {
     $daysRemaining = $currentDate->diff($endDate)->days;
 }
 
+// Calculate project period if duration is set
+$projectPeriodStart = null;
+$projectPeriodEnd = null;
+if ($project['duration']) {
+    $investmentEndDate = new DateTime($project['end_date']);
+    $projectPeriodStart = clone $investmentEndDate;
+    $projectPeriodStart->modify('+1 day');
+    
+    // Parse duration
+    $months = 0;
+    if (strpos($project['duration'], 'month') !== false) {
+        $months = intval($project['duration']);
+    } elseif (strpos($project['duration'], 'year') !== false) {
+        $months = intval($project['duration']) * 12;
+    }
+    
+    if ($months > 0) {
+        $projectPeriodEnd = clone $projectPeriodStart;
+        $projectPeriodEnd->modify("+{$months} months");
+    }
+}
+
 ?>
 
 <div class="row">
@@ -92,22 +114,30 @@ if ($currentDate > $endDate) {
                         <td><span class="label label-<?= $timeStatusClass ?>"><?= $timeStatus ?></span></td>
                     </tr>
                     <tr>
-                        <td><strong>Start Date:</strong></td>
-                        <td><?= date('M d, Y', strtotime($project['start_date'])) ?></td>
+                        <td><strong>Investment Period:</strong></td>
+                        <td><?= date('M d, Y', strtotime($project['start_date'])) ?> - <?= date('M d, Y', strtotime($project['end_date'])) ?></td>
                     </tr>
                     <tr>
-                        <td><strong>End Date:</strong></td>
-                        <td><?= date('M d, Y', strtotime($project['end_date'])) ?></td>
-                    </tr>
-                    <tr>
-                        <td><strong>Duration:</strong></td>
+                        <td><strong>Investment Duration:</strong></td>
                         <td><?= $totalDuration ?> days</td>
                     </tr>
                     <?php if ($timeStatus != 'Ended'): ?>
                     <tr>
                         <td><strong>Days Remaining:</strong></td>
-                        <td><?= $daysRemaining ?> days</td>
+                        <td><?= $daysRemaining ?> days to invest</td>
                     </tr>
+                    <?php endif; ?>
+                    <?php if ($project['duration']): ?>
+                    <tr>
+                        <td><strong>Project Duration:</strong></td>
+                        <td><?= htmlspecialchars($project['duration']) ?></td>
+                    </tr>
+                    <?php if ($projectPeriodStart && $projectPeriodEnd): ?>
+                    <tr>
+                        <td><strong>Project Period:</strong></td>
+                        <td><?= $projectPeriodStart->format('M d, Y') ?> - <?= $projectPeriodEnd->format('M d, Y') ?></td>
+                    </tr>
+                    <?php endif; ?>
                     <?php endif; ?>
                 </table>
             </div>

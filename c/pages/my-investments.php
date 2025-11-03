@@ -22,6 +22,7 @@ $investmentsSQL = "SELECT
     i.profit_percent,
     i.profit_percent_min,
     i.profit_percent_max,
+    i.duration,
     i.start_date,
     i.end_date,
     c.name as client_name
@@ -66,6 +67,7 @@ $investmentsResult = $stmt->get_result();
                   <th>Investment Date</th>
                   <th>Profit Rate</th>
                   <th>Expected Profit</th>
+                  <th>Withdraw Date</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -91,6 +93,32 @@ $investmentsResult = $stmt->get_result();
                     
                     $projectStarted = strtotime($investment['start_date']) <= time();
                     $projectEnded = strtotime($investment['end_date']) < time();
+                    
+                    // Calculate withdraw date (end of project period)
+                    $withdrawDate = null;
+                    $withdrawDateDisplay = '<span class="text-muted">-</span>';
+                    if ($investment['duration'] && $investment['end_date']) {
+                        try {
+                            $endDate = new DateTime($investment['end_date']);
+                            $projectStart = clone $endDate;
+                            $projectStart->modify('+1 day');
+                            
+                            $months = 0;
+                            if (strpos($investment['duration'], 'month') !== false) {
+                                $months = intval($investment['duration']);
+                            } elseif (strpos($investment['duration'], 'year') !== false) {
+                                $months = intval($investment['duration']) * 12;
+                            }
+                            
+                            if ($months > 0) {
+                                $withdrawDate = clone $projectStart;
+                                $withdrawDate->modify("+{$months} months");
+                                $withdrawDateDisplay = $withdrawDate->format('M d, Y');
+                            }
+                        } catch (Exception $e) {
+                            // If date calculation fails, show dash
+                        }
+                    }
                     
                     // Display investment status based on database status and project timeline
                     $canUploadPayment = false;
@@ -149,6 +177,7 @@ $investmentsResult = $stmt->get_result();
                     </td>
                     <td><span class="label label-success"><?= $profitDisplay ?></span></td>
                     <td><strong class="text-success"><?= $expectedProfitDisplay ?></strong></td>
+                    <td><?= $withdrawDateDisplay ?></td>
                     <td><?= $status ?></td>
                     <td>
                       <?php if ($canUploadPayment && $investment['remaining_amount'] > 0): ?>

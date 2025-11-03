@@ -21,6 +21,7 @@ if ($_POST && isset($_POST['investmentTitle'])) {
     $title = trim($_POST['investmentTitle']);
     $totalGoal = floatval($_POST['investmentTotalGoal']);
     $profitType = trim($_POST['profitType']);
+    $duration = isset($_POST['investmentDuration']) ? trim($_POST['investmentDuration']) : null;
     $startDate = trim($_POST['investmentStartDate']);
     $endDate = trim($_POST['investmentEndDate']);
     
@@ -34,9 +35,9 @@ if ($_POST && isset($_POST['investmentTitle'])) {
         $profitPercentMax = floatval($_POST['investmentProfitPercentMax']);
     }
     
-    $insertSQL = "INSERT INTO investments (title, total_goal, profit_percent, profit_percent_min, profit_percent_max, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $insertSQL = "INSERT INTO investments (title, total_goal, profit_percent, profit_percent_min, profit_percent_max, duration, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($insertSQL);
-    $stmt->bind_param("sddddss", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $startDate, $endDate);
+    $stmt->bind_param("sddddsss", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $duration, $startDate, $endDate);
     
     if ($stmt->execute()) {
         echo "<script>alert('Investment added successfully!'); window.location.href = 'index.php?p=investment-list';</script>";
@@ -52,6 +53,7 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
     $title = trim($_POST['editInvestmentTitle']);
     $totalGoal = floatval($_POST['editInvestmentTotalGoal']);
     $profitType = trim($_POST['editProfitType']);
+    $duration = isset($_POST['editInvestmentDuration']) ? trim($_POST['editInvestmentDuration']) : null;
     $startDate = trim($_POST['editInvestmentStartDate']);
     $endDate = trim($_POST['editInvestmentEndDate']);
     
@@ -65,9 +67,9 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
         $profitPercentMax = floatval($_POST['editInvestmentProfitPercentMax']);
     }
     
-    $updateSQL = "UPDATE investments SET title = ?, total_goal = ?, profit_percent = ?, profit_percent_min = ?, profit_percent_max = ?, start_date = ?, end_date = ? WHERE id = ?";
+    $updateSQL = "UPDATE investments SET title = ?, total_goal = ?, profit_percent = ?, profit_percent_min = ?, profit_percent_max = ?, duration = ?, start_date = ?, end_date = ? WHERE id = ?";
     $stmt = $conn->prepare($updateSQL);
-    $stmt->bind_param("sddddssi", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $startDate, $endDate, $investmentId);
+    $stmt->bind_param("sddddsssi", $title, $totalGoal, $profitPercent, $profitPercentMin, $profitPercentMax, $duration, $startDate, $endDate, $investmentId);
     
     if ($stmt->execute()) {
         echo "<script>alert('Investment updated successfully!'); window.location.href = 'index.php?p=investment-list';</script>";
@@ -77,11 +79,11 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
     $stmt->close();
 }
 
-$sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date, i.created_at,
+$sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.duration, i.start_date, i.end_date, i.created_at,
                COALESCE(SUM(ci.invested_amount), 0) as total_invested
         FROM investments i 
         LEFT JOIN client_investments ci ON i.id = ci.investment_id 
-        GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.start_date, i.end_date, i.created_at
+        GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.duration, i.start_date, i.end_date, i.created_at
         ORDER BY i.created_at DESC";
 $result = $conn->query($sql);
 ?>
@@ -148,6 +150,20 @@ $result = $conn->query($sql);
                   </div>
                 </div>
                 <div class="form-group">
+                  <label for="investmentDuration">Project Duration</label>
+                  <select class="form-control" id="investmentDuration" name="investmentDuration">
+                    <option value="">Select Duration (Optional)</option>
+                    <option value="1 month">1 Month</option>
+                    <option value="3 months">3 Months</option>
+                    <option value="6 months">6 Months</option>
+                    <option value="9 months">9 Months</option>
+                    <option value="1 year">1 Year</option>
+                    <option value="2 years">2 Years</option>
+                    <option value="3 years">3 Years</option>
+                    <option value="5 years">5 Years</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label for="investmentStartDate">Start Date</label>
                   <input type="date" class="form-control" id="investmentStartDate" name="investmentStartDate" required>
                 </div>
@@ -212,6 +228,20 @@ $result = $conn->query($sql);
                   </div>
                 </div>
                 <div class="form-group">
+                  <label for="editInvestmentDuration">Project Duration</label>
+                  <select class="form-control" id="editInvestmentDuration" name="editInvestmentDuration">
+                    <option value="">Select Duration (Optional)</option>
+                    <option value="1 month">1 Month</option>
+                    <option value="3 months">3 Months</option>
+                    <option value="6 months">6 Months</option>
+                    <option value="9 months">9 Months</option>
+                    <option value="1 year">1 Year</option>
+                    <option value="2 years">2 Years</option>
+                    <option value="3 years">3 Years</option>
+                    <option value="5 years">5 Years</option>
+                  </select>
+                </div>
+                <div class="form-group">
                   <label for="editInvestmentStartDate">Start Date</label>
                   <input type="date" class="form-control" id="editInvestmentStartDate" name="editInvestmentStartDate" required>
                 </div>
@@ -263,9 +293,9 @@ $result = $conn->query($sql);
               <th>Total Invested</th>
               <th>Progress</th>
               <th>Profit Percent</th>
-              <th>Start Date</th>
-              <th>End Date</th>
-              <th>Created Date</th>
+              <th>Investment Period</th>
+              <th>Project Duration</th>
+              <th>Project Period</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -282,6 +312,28 @@ $result = $conn->query($sql);
                 } else {
                     $profitDisplay = number_format($row['profit_percent'], 1) . '%';
                 }
+                
+                // Calculate project period if duration is set
+                $projectPeriod = '<span class="text-muted">-</span>';
+                if ($row['duration'] && $row['end_date']) {
+                    $investmentEndDate = new DateTime($row['end_date']);
+                    $projectStartDate = clone $investmentEndDate;
+                    $projectStartDate->modify('+1 day');
+                    
+                    // Parse duration
+                    $months = 0;
+                    if (strpos($row['duration'], 'month') !== false) {
+                        $months = intval($row['duration']);
+                    } elseif (strpos($row['duration'], 'year') !== false) {
+                        $months = intval($row['duration']) * 12;
+                    }
+                    
+                    if ($months > 0) {
+                        $projectEndDate = clone $projectStartDate;
+                        $projectEndDate->modify("+{$months} months");
+                        $projectPeriod = $projectStartDate->format('M d, Y') . '<br><small class="text-muted">to ' . $projectEndDate->format('M d, Y') . '</small>';
+                    }
+                }
               ?>
                 <tr>
                   <td><?= htmlspecialchars($row['id']) ?></td>
@@ -296,14 +348,17 @@ $result = $conn->query($sql);
                     </div>
                   </td>
                   <td><?= $profitDisplay ?></td>
-                  <td><?= htmlspecialchars($row['start_date']) ?></td>
-                  <td><?= htmlspecialchars($row['end_date']) ?></td>
-                  <td><?= htmlspecialchars($row['created_at']) ?></td>
+                  <td>
+                    <?= date('M d, Y', strtotime($row['start_date'])) ?><br>
+                    <small class="text-muted">to <?= date('M d, Y', strtotime($row['end_date'])) ?></small>
+                  </td>
+                  <td><?= $row['duration'] ? htmlspecialchars($row['duration']) : '<span class="text-muted">Not set</span>' ?></td>
+                  <td><?= $projectPeriod ?></td>
                   <td>
                     <button type="button" class="btn btn-info btn-sm" onclick="viewInvestmentClients(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>')" title="View Clients" style="margin-right: 5px;">
                       <i class="fa fa-eye"></i>
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="editInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>', <?= $row['total_goal'] ?>, <?= $row['profit_percent'] ?>, <?= $row['profit_percent_min'] ?? 'null' ?>, <?= $row['profit_percent_max'] ?? 'null' ?>, '<?= htmlspecialchars($row['start_date']) ?>', '<?= htmlspecialchars($row['end_date']) ?>')" title="Edit Investment" style="margin-right: 5px;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="editInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>', <?= $row['total_goal'] ?>, <?= $row['profit_percent'] ?>, <?= $row['profit_percent_min'] ?? 'null' ?>, <?= $row['profit_percent_max'] ?? 'null' ?>, '<?= htmlspecialchars($row['duration'] ?? '') ?>', '<?= htmlspecialchars($row['start_date']) ?>', '<?= htmlspecialchars($row['end_date']) ?>')" title="Edit Investment" style="margin-right: 5px;">
                       <i class="fa fa-edit"></i>
                     </button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="removeInvestment(<?= $row['id'] ?>, '<?= htmlspecialchars($row['title']) ?>')" title="Remove Investment">
@@ -345,6 +400,76 @@ function toggleProfitFields(isEdit) {
     }
 }
 
+function calculateProjectDuration(isEdit) {
+    var prefix = isEdit ? 'edit' : '';
+    var endDateField = document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentEndDate');
+    var durationField = document.getElementById(prefix + (isEdit ? 'I' : 'i') + 'nvestmentDuration');
+    
+    var investmentEndDate = endDateField.value;
+    var duration = durationField.value;
+    
+    if (investmentEndDate && duration) {
+        var projectStart = new Date(investmentEndDate);
+        projectStart.setDate(projectStart.getDate() + 1); // Start day after investment period ends
+        
+        var months = 0;
+        
+        // Parse duration
+        if (duration.includes('month')) {
+            months = parseInt(duration);
+        } else if (duration.includes('year')) {
+            months = parseInt(duration) * 12;
+        }
+        
+        if (months > 0) {
+            // Calculate project end date
+            var projectEnd = new Date(projectStart);
+            projectEnd.setMonth(projectEnd.getMonth() + months);
+            
+            // Show info to user
+            var projectStartStr = projectStart.toISOString().split('T')[0];
+            var projectEndStr = projectEnd.toISOString().split('T')[0];
+            
+            var infoMessage = 'Project will run from ' + projectStartStr + ' to ' + projectEndStr;
+            
+            // Create or update info message
+            var infoId = prefix + 'ProjectDurationInfo';
+            var existingInfo = document.getElementById(infoId);
+            
+            if (!existingInfo) {
+                var infoDiv = document.createElement('small');
+                infoDiv.id = infoId;
+                infoDiv.className = 'text-info';
+                infoDiv.style.display = 'block';
+                infoDiv.style.marginTop = '5px';
+                durationField.parentElement.appendChild(infoDiv);
+                existingInfo = infoDiv;
+            }
+            
+            existingInfo.innerHTML = '<i class="fa fa-info-circle"></i> ' + infoMessage;
+        }
+    }
+}
+
+// Add event listeners when document loads
+document.addEventListener('DOMContentLoaded', function() {
+    // For Add Investment form
+    document.getElementById('investmentEndDate').addEventListener('change', function() {
+        calculateProjectDuration(false);
+    });
+    document.getElementById('investmentDuration').addEventListener('change', function() {
+        calculateProjectDuration(false);
+    });
+    
+    // For Edit Investment form
+    document.getElementById('editInvestmentEndDate').addEventListener('change', function() {
+        calculateProjectDuration(true);
+    });
+    document.getElementById('editInvestmentDuration').addEventListener('change', function() {
+        calculateProjectDuration(true);
+    });
+});
+
 function viewInvestmentClients(investmentId, investmentTitle) {
     // Set modal title
     document.getElementById('viewClientsModalLabel').textContent = 'Clients Invested in: ' + investmentTitle;
@@ -366,11 +491,12 @@ function viewInvestmentClients(investmentId, investmentTitle) {
         });
 }
 
-function editInvestment(investmentId, title, totalGoal, profitPercent, profitPercentMin, profitPercentMax, startDate, endDate) {
+function editInvestment(investmentId, title, totalGoal, profitPercent, profitPercentMin, profitPercentMax, duration, startDate, endDate) {
     // Populate the edit modal with current investment data
     document.getElementById('editInvestmentId').value = investmentId;
     document.getElementById('editInvestmentTitle').value = title;
     document.getElementById('editInvestmentTotalGoal').value = totalGoal;
+    document.getElementById('editInvestmentDuration').value = duration || '';
     document.getElementById('editInvestmentStartDate').value = startDate;
     document.getElementById('editInvestmentEndDate').value = endDate;
     

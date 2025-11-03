@@ -75,6 +75,28 @@ $totalDuration = $startDate->diff($endDate)->days;
 $daysElapsed = $startDate->diff($currentDate)->days;
 $daysRemaining = $currentDate->diff($endDate)->days;
 
+// Calculate project period if duration is set
+$projectPeriodStart = null;
+$projectPeriodEnd = null;
+if ($investment['duration']) {
+    $investmentEndDate = new DateTime($investment['end_date']);
+    $projectPeriodStart = clone $investmentEndDate;
+    $projectPeriodStart->modify('+1 day');
+    
+    // Parse duration
+    $months = 0;
+    if (strpos($investment['duration'], 'month') !== false) {
+        $months = intval($investment['duration']);
+    } elseif (strpos($investment['duration'], 'year') !== false) {
+        $months = intval($investment['duration']) * 12;
+    }
+    
+    if ($months > 0) {
+        $projectPeriodEnd = clone $projectPeriodStart;
+        $projectPeriodEnd->modify("+{$months} months");
+    }
+}
+
 if ($currentDate > $endDate) {
     $timeStatus = 'Expired';
     $timeStatusClass = 'danger';
@@ -97,11 +119,16 @@ echo '<div class="card-body">';
 echo '<table class="table table-sm">';
 echo '<tr><td><strong>Title:</strong></td><td>' . htmlspecialchars($investment['title']) . '</td></tr>';
 echo '<tr><td><strong>Status:</strong></td><td><span class="badge badge-' . $timeStatusClass . '">' . $timeStatus . '</span></td></tr>';
-echo '<tr><td><strong>Start Date:</strong></td><td>' . htmlspecialchars($investment['start_date']) . '</td></tr>';
-echo '<tr><td><strong>End Date:</strong></td><td>' . htmlspecialchars($investment['end_date']) . '</td></tr>';
-echo '<tr><td><strong>Duration:</strong></td><td>' . $totalDuration . ' days</td></tr>';
+echo '<tr><td><strong>Investment Period:</strong></td><td>' . htmlspecialchars($investment['start_date']) . ' - ' . htmlspecialchars($investment['end_date']) . '</td></tr>';
+echo '<tr><td><strong>Investment Duration:</strong></td><td>' . $totalDuration . ' days</td></tr>';
 if ($timeStatus == 'Active') {
-    echo '<tr><td><strong>Days Remaining:</strong></td><td>' . $daysRemaining . ' days</td></tr>';
+    echo '<tr><td><strong>Days Remaining:</strong></td><td>' . $daysRemaining . ' days to invest</td></tr>';
+}
+if ($investment['duration']) {
+    echo '<tr><td><strong>Project Duration:</strong></td><td>' . htmlspecialchars($investment['duration']) . '</td></tr>';
+    if ($projectPeriodStart && $projectPeriodEnd) {
+        echo '<tr><td><strong>Project Period:</strong></td><td>' . $projectPeriodStart->format('M d, Y') . ' - ' . $projectPeriodEnd->format('M d, Y') . '</td></tr>';
+    }
 }
 echo '</table>';
 echo '</div>';
