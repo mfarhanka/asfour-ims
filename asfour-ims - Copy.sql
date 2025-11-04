@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 03, 2025 at 04:09 PM
+-- Generation Time: Nov 03, 2025 at 12:26 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -96,7 +96,6 @@ CREATE TABLE `investments` (
   `profit_percent` decimal(5,2) NOT NULL,
   `profit_percent_min` decimal(5,2) DEFAULT NULL COMMENT 'Minimum profit percentage',
   `profit_percent_max` decimal(5,2) DEFAULT NULL COMMENT 'Maximum profit percentage',
-  `duration` varchar(50) DEFAULT NULL COMMENT 'Project duration (e.g., 3 months, 1 year)',
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
   `agreement_required` tinyint(1) DEFAULT 1 COMMENT '1 if agreement is required, 0 otherwise',
@@ -151,6 +150,16 @@ CREATE TABLE `v_investment_payment_summary` (
 -- --------------------------------------------------------
 
 --
+-- Structure for view `v_investment_payment_summary`
+--
+DROP TABLE IF EXISTS `v_investment_payment_summary`;
+
+DROP VIEW IF EXISTS `v_investment_payment_summary`;
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_investment_payment_summary`  AS SELECT `ci`.`id` AS `id`, `ci`.`client_id` AS `client_id`, `ci`.`investment_id` AS `investment_id`, `ci`.`invested_amount` AS `invested_amount`, `ci`.`total_paid` AS `total_paid`, `ci`.`remaining_amount` AS `remaining_amount`, `ci`.`is_fully_paid` AS `is_fully_paid`, `ci`.`agreement_uploaded` AS `agreement_uploaded`, `ci`.`status` AS `status`, `c`.`name` AS `client_name`, `i`.`title` AS `investment_title`, count(`pt`.`id`) AS `payment_count`, sum(case when `pt`.`status` = 'verified' then `pt`.`payment_amount` else 0 end) AS `verified_payments`, sum(case when `pt`.`status` = 'pending' then `pt`.`payment_amount` else 0 end) AS `pending_payments` FROM (((`client_investments` `ci` left join `clients` `c` on(`ci`.`client_id` = `c`.`id`)) left join `investments` `i` on(`ci`.`investment_id` = `i`.`id`)) left join `payment_transactions` `pt` on(`ci`.`id` = `pt`.`client_investment_id`)) GROUP BY `ci`.`id` ;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `withdrawals`
 --
 
@@ -171,16 +180,6 @@ CREATE TABLE `withdrawals` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Stores client profit withdrawal requests and admin processing';
-
--- --------------------------------------------------------
-
---
--- Structure for view `v_investment_payment_summary`
---
-DROP TABLE IF EXISTS `v_investment_payment_summary`;
-
-DROP VIEW IF EXISTS `v_investment_payment_summary`;
-CREATE ALGORITHM=UNDEFINED VIEW `v_investment_payment_summary`  AS SELECT `ci`.`id` AS `id`, `ci`.`client_id` AS `client_id`, `ci`.`investment_id` AS `investment_id`, `ci`.`invested_amount` AS `invested_amount`, `ci`.`total_paid` AS `total_paid`, `ci`.`remaining_amount` AS `remaining_amount`, `ci`.`is_fully_paid` AS `is_fully_paid`, `ci`.`agreement_uploaded` AS `agreement_uploaded`, `ci`.`status` AS `status`, `c`.`name` AS `client_name`, `i`.`title` AS `investment_title`, count(`pt`.`id`) AS `payment_count`, sum(case when `pt`.`status` = 'verified' then `pt`.`payment_amount` else 0 end) AS `verified_payments`, sum(case when `pt`.`status` = 'pending' then `pt`.`payment_amount` else 0 end) AS `pending_payments` FROM (((`client_investments` `ci` left join `clients` `c` on(`ci`.`client_id` = `c`.`id`)) left join `investments` `i` on(`ci`.`investment_id` = `i`.`id`)) left join `payment_transactions` `pt` on(`ci`.`id` = `pt`.`client_investment_id`)) GROUP BY `ci`.`id` ;
 
 --
 -- Indexes for dumped tables
@@ -294,8 +293,8 @@ ALTER TABLE `payment_transactions`
 -- Constraints for table `withdrawals`
 --
 ALTER TABLE `withdrawals`
-  ADD CONSTRAINT `fk_withdrawal_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_withdrawal_client_investment` FOREIGN KEY (`client_investment_id`) REFERENCES `client_investments` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_withdrawal_client` FOREIGN KEY (`client_id`) REFERENCES `clients` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_withdrawal_investment` FOREIGN KEY (`investment_id`) REFERENCES `investments` (`id`) ON DELETE CASCADE;
 COMMIT;
 

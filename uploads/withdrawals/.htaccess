@@ -1,0 +1,15 @@
+# Security for withdrawal proof files
+# Disable directory listing
+Options -Indexes
+
+# Allow access to images and PDFs only
+<FilesMatch "\.(jpg|jpeg|png|pdf)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Deny access to .htaccess and other files
+<FilesMatch "^\.ht">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>

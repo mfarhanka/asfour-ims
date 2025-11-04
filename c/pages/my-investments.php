@@ -3,7 +3,7 @@
 
 $client_id = $_SESSION['client_id'];
 
-// Get client's detailed investment information with partial payment support
+// Get client's detailed investment information with partial payment support and withdrawal status
 $investmentsSQL = "SELECT 
     ci.id as investment_id,
     ci.invested_amount,
@@ -25,10 +25,16 @@ $investmentsSQL = "SELECT
     i.duration,
     i.start_date,
     i.end_date,
-    c.name as client_name
+    c.name as client_name,
+    w.withdrawal_id,
+    w.status as withdrawal_status,
+    w.withdrawal_amount,
+    w.request_date as withdrawal_request_date,
+    w.withdrawal_proof
 FROM client_investments ci
 JOIN investments i ON ci.investment_id = i.id
 JOIN clients c ON ci.client_id = c.id
+LEFT JOIN withdrawals w ON ci.id = w.client_investment_id
 WHERE ci.client_id = ?
 ORDER BY ci.investment_date DESC, ci.created_at DESC";
 
@@ -36,6 +42,28 @@ $stmt = $conn->prepare($investmentsSQL);
 $stmt->bind_param("i", $client_id);
 $stmt->execute();
 $investmentsResult = $stmt->get_result();
+
+// Get withdrawal history for this client
+$withdrawalHistorySQL = "SELECT 
+    w.withdrawal_id,
+    w.withdrawal_amount,
+    w.request_date,
+    w.status,
+    w.withdrawal_proof,
+    w.processed_date,
+    w.admin_notes,
+    i.title as project_title,
+    ci.invested_amount
+FROM withdrawals w
+JOIN client_investments ci ON w.client_investment_id = ci.id
+JOIN investments i ON w.investment_id = i.id
+WHERE w.client_id = ?
+ORDER BY w.request_date DESC";
+
+$withdrawalStmt = $conn->prepare($withdrawalHistorySQL);
+$withdrawalStmt->bind_param("i", $client_id);
+$withdrawalStmt->execute();
+$withdrawalHistoryResult = $withdrawalStmt->get_result();
 ?>
 
 <div class="page-title">
@@ -180,6 +208,45 @@ $investmentsResult = $stmt->get_result();
                     <td><?= $withdrawDateDisplay ?></td>
                     <td><?= $status ?></td>
                     <td>
+                      <?php 
+                        // Check if withdrawal is available (project duration ended and investment is active/completed)
+                        $canWithdraw = false;
+                        $canCancelWithdrawal = false;
+                        $withdrawalButtonDisabled = false;
+                        $withdrawalButtonText = 'Request Withdrawal';
+                        $withdrawalButtonClass = 'btn-success';
+                        
+                        if ($withdrawDate && $investment['status'] == 'active') {
+                            $today = new DateTime();
+                            if ($today >= $withdrawDate) {
+                                // Project duration has ended
+                                if ($investment['withdrawal_status'] && $investment['withdrawal_status'] != 'rejected') {
+                                    // Withdrawal already requested (not rejected)
+                                    $withdrawalButtonDisabled = true;
+                                    switch($investment['withdrawal_status']) {
+                                        case 'pending':
+                                            $withdrawalButtonText = 'Withdrawal Pending';
+                                            $withdrawalButtonClass = 'btn-warning';
+                                            $canCancelWithdrawal = true; // Allow cancel for pending
+                                            break;
+                                        case 'approved':
+                                            $withdrawalButtonText = 'Withdrawal Approved';
+                                            $withdrawalButtonClass = 'btn-info';
+                                            $canCancelWithdrawal = true; // Allow cancel for approved
+                                            break;
+                                        case 'completed':
+                                            $withdrawalButtonText = 'Withdrawal Completed';
+                                            $withdrawalButtonClass = 'btn-default';
+                                            break;
+                                    }
+                                } else {
+                                    // No active withdrawal or previous was rejected - allow new request
+                                    $canWithdraw = true;
+                                }
+                            }
+                        }
+                      ?>
+                      
                       <?php if ($canUploadPayment && $investment['remaining_amount'] > 0): ?>
                         <button type="button" class="btn btn-primary btn-sm" onclick="showUploadPaymentModal(<?= $investment['investment_id'] ?>, '<?= htmlspecialchars($investment['project_title']) ?>', <?= $investment['invested_amount'] ?>, <?= $investment['remaining_amount'] ?>)">
                           <i class="fa fa-upload"></i> Add Payment
@@ -200,6 +267,23 @@ $investmentsResult = $stmt->get_result();
                           <i class="fa fa-list"></i> Payments
                         </button>
                       <?php endif; ?>
+                      
+                      <?php if ($canWithdraw || $withdrawalButtonDisabled): ?>
+                        <br style="margin-bottom: 5px;">
+                        <button type="button" 
+                                class="btn <?= $withdrawalButtonClass ?> btn-sm" 
+                                onclick="showWithdrawalModal(<?= $investment['investment_id'] ?>, '<?= htmlspecialchars($investment['project_title']) ?>', <?= $isProfitRange ? $profitMin : $expectedProfit ?>, <?= $isProfitRange ? $profitMax : $expectedProfit ?>)"
+                                <?= $withdrawalButtonDisabled ? 'disabled' : '' ?>>
+                          <i class="fa fa-money"></i> <?= $withdrawalButtonText ?>
+                        </button>
+                        <?php if ($canCancelWithdrawal && $investment['withdrawal_id']): ?>
+                          <button type="button" class="btn btn-danger btn-sm" 
+                                  onclick="cancelClientWithdrawal(<?= $investment['withdrawal_id'] ?>, '<?= htmlspecialchars($investment['project_title']) ?>')">
+                            <i class="fa fa-ban"></i> Cancel Request
+                          </button>
+                        <?php endif; ?>
+                      <?php endif; ?>
+                    </td>
                     </td>
                   </tr>
                 <?php endwhile; ?>
@@ -220,6 +304,89 @@ $investmentsResult = $stmt->get_result();
     </div>
   </div>
 </div>
+
+<!-- Withdrawal History Section -->
+<?php if ($withdrawalHistoryResult->num_rows > 0): ?>
+<div class="row">
+  <div class="col-md-12 col-sm-12 col-xs-12">
+    <div class="x_panel">
+      <div class="x_title">
+        <h2><i class="fa fa-history"></i> Withdrawal History</h2>
+        <div class="clearfix"></div>
+      </div>
+      <div class="x_content">
+        <div class="table-responsive">
+          <table class="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th>Request ID</th>
+                <th>Project</th>
+                <th>Investment Amount</th>
+                <th>Withdrawal Amount</th>
+                <th>Request Date</th>
+                <th>Status</th>
+                <th>Transfer Proof</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php while($withdrawal = $withdrawalHistoryResult->fetch_assoc()): ?>
+                <?php
+                  switch($withdrawal['status']) {
+                    case 'pending':
+                      $statusLabel = '<span class="label label-warning">Pending Review</span>';
+                      break;
+                    case 'approved':
+                      $statusLabel = '<span class="label label-info">Approved - Processing</span>';
+                      break;
+                    case 'completed':
+                      $statusLabel = '<span class="label label-success">Completed</span>';
+                      break;
+                    case 'rejected':
+                      $statusLabel = '<span class="label label-danger">Rejected</span>';
+                      break;
+                    default:
+                      $statusLabel = '<span class="label label-default">Unknown</span>';
+                  }
+                ?>
+                <tr>
+                  <td><strong>#<?= $withdrawal['withdrawal_id'] ?></strong></td>
+                  <td><strong><?= htmlspecialchars($withdrawal['project_title']) ?></strong></td>
+                  <td><strong class="text-primary">$<?= number_format($withdrawal['invested_amount'], 2) ?></strong></td>
+                  <td><strong class="text-success">$<?= number_format($withdrawal['withdrawal_amount'], 2) ?></strong></td>
+                  <td>
+                    <?= date('M d, Y', strtotime($withdrawal['request_date'])) ?>
+                    <br><small class="text-muted"><?= date('g:i A', strtotime($withdrawal['request_date'])) ?></small>
+                  </td>
+                  <td><?= $statusLabel ?></td>
+                  <td>
+                    <?php if ($withdrawal['status'] == 'completed' && $withdrawal['withdrawal_proof']): ?>
+                      <a href="../uploads/withdrawals/<?= htmlspecialchars($withdrawal['withdrawal_proof']) ?>" target="_blank" class="btn btn-success btn-xs">
+                        <i class="fa fa-file-image-o"></i> View Proof
+                      </a>
+                    <?php else: ?>
+                      <span class="text-muted">-</span>
+                    <?php endif; ?>
+                  </td>
+                  <td>
+                    <?php if ($withdrawal['status'] == 'rejected' && $withdrawal['admin_notes']): ?>
+                      <button type="button" class="btn btn-warning btn-sm" onclick="showWithdrawalRejectionReason('<?= htmlspecialchars(addslashes($withdrawal['admin_notes'])) ?>')">
+                        <i class="fa fa-info-circle"></i> View Reason
+                      </button>
+                    <?php else: ?>
+                      <span class="text-muted">-</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endwhile; ?>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
 
 <!-- Upload Payment Proof Modal -->
 <div class="modal fade" id="uploadPaymentModal" tabindex="-1" role="dialog">
@@ -393,4 +560,94 @@ document.getElementById('uploadPaymentForm').addEventListener('submit', function
         return false;
     }
 });
+
+function showWithdrawalModal(investmentId, projectTitle, profitMin, profitMax) {
+    document.getElementById('withdrawal_investment_id').value = investmentId;
+    document.getElementById('withdrawal_project_title').innerHTML = '<strong>' + projectTitle + '</strong>';
+    
+    var profitDisplay = '';
+    if (profitMin == profitMax) {
+        profitDisplay = '<strong class="text-success">$' + profitMin.toFixed(2) + '</strong>';
+    } else {
+        profitDisplay = '<strong class="text-success">$' + profitMin.toFixed(2) + ' - $' + profitMax.toFixed(2) + '</strong>';
+    }
+    document.getElementById('withdrawal_profit_amount').innerHTML = profitDisplay;
+    
+    document.getElementById('withdrawal_notes').value = '';
+    $('#withdrawalModal').modal('show');
+}
+
+function showWithdrawalRejectionReason(reason) {
+    alert('Rejection Reason:\n\n' + reason);
+}
+
+function cancelClientWithdrawal(withdrawalId, projectTitle) {
+    if (confirm('Are you sure you want to cancel your withdrawal request for "' + projectTitle + '"?\n\nThis action cannot be undone.')) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'cancel-withdrawal.php';
+        
+        var idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'withdrawal_id';
+        idInput.value = withdrawalId;
+        form.appendChild(idInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
+
+<!-- Withdrawal Request Modal -->
+<div class="modal fade" id="withdrawalModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <form id="withdrawalRequestForm" method="POST" action="request-withdrawal.php">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">
+            <i class="fa fa-money"></i> Request Profit Withdrawal
+          </h4>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="withdrawal_investment_id" name="investment_id" required>
+          
+          <div class="alert alert-info">
+            <i class="fa fa-info-circle"></i> 
+            <strong>Project:</strong> <span id="withdrawal_project_title"></span>
+          </div>
+          
+          <div class="form-group">
+            <label>Expected Profit Amount</label>
+            <div class="well well-sm" style="background: #f9f9f9;">
+              <span id="withdrawal_profit_amount"></span>
+            </div>
+            <p class="help-block">
+              <i class="fa fa-info-circle"></i> This is your expected profit from this investment. 
+              The actual amount transferred may vary based on final project performance.
+            </p>
+          </div>
+          
+          <div class="form-group">
+            <label for="withdrawal_notes">Bank Account Details / Instructions <span class="text-danger">*</span></label>
+            <textarea class="form-control" id="withdrawal_notes" name="client_notes" rows="5" required
+                      placeholder="Please provide your bank account details for the transfer:&#10;&#10;Bank Name:&#10;Account Number:&#10;Account Holder Name:&#10;IBAN/SWIFT (if applicable):&#10;&#10;Any additional instructions..."></textarea>
+            <p class="help-block">
+              <i class="fa fa-exclamation-triangle"></i> Please ensure your bank details are correct. 
+              Admin will process the withdrawal based on this information.
+            </p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" data-dismiss="modal">
+            <i class="fa fa-times"></i> Cancel
+          </button>
+          <button type="submit" class="btn btn-success">
+            <i class="fa fa-check"></i> Submit Withdrawal Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

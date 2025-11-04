@@ -32,6 +32,7 @@
           <li><a href="index.php?p=client-investment"><i class="fa fa-money"></i> Client Investments</a></li>
           <li><a href="index.php?p=pending-investments"><i class="fa fa-clock-o"></i> Pending Approvals <span class="badge bg-orange">New</span></a></li>
           <li><a href="index.php?p=verify-payments"><i class="fa fa-check-square-o"></i> Verify Payments <span class="badge bg-green">New</span></a></li>
+          <li><a href="index.php?p=pending-withdrawals"><i class="fa fa-money"></i> Pending Withdrawals <span class="badge bg-blue">New</span></a></li>
           <li><a href="index.php?p=admin-list"><i class="fa fa-user-secret"></i> Admin Management</a></li>
           <!-- Car-related menu removed for investment context -->
           <!-- add more as needed -->
