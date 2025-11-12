@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FileZilla3 version="3.69.3" platform="windows">
+	<Servers>
+		<Server>
+			<Host>ftp.dzvisual.my</Host>
+			<Port>21</Port>
+			<Protocol>0</Protocol>
+			<Type>0</Type>
+			<User>asfour@dzvisual.my</User>
+			<Pass encoding="base64">Wi5Nb2dhKCV1amh9</Pass>
+			<Logontype>1</Logontype>
+			<PasvMode>MODE_DEFAULT</PasvMode>
+			<EncodingType>Auto</EncodingType>
+			<BypassProxy>0</BypassProxy>
+			<Name>asfour-ims</Name>
+			<LocalDir>C:\xampp\htdocs\asfour-ims-v1.1</LocalDir>
+			<RemoteDir>1 0</RemoteDir>
+			<SyncBrowsing>1</SyncBrowsing>
+			<DirectoryComparison>1</DirectoryComparison>
+		</Server>
+	</Servers>
+</FileZilla3>
