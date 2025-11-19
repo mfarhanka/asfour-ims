@@ -13,7 +13,7 @@
     <!-- menu profile quick info -->
     <div class="profile clearfix">
       <div class="profile_pic">
-        <img src="../build/images/user.png" alt="..." class="img-circle profile_img">
+        <img src="../images/user.png" alt="..." class="img-circle profile_img">
       </div>
       <div class="profile_info">
         <span>Welcome,</span>
@@ -51,13 +51,9 @@
         <h3>Account</h3>
         <ul class="nav side-menu">
           <li>
-            <a href="#" onclick="return false;">
-              <i class="fa fa-user"></i> Profile <span class="fa fa-chevron-down"></span>
+            <a href="profile.php">
+              <i class="fa fa-user"></i> My Profile
             </a>
-            <ul class="nav child_menu">
-              <li><a href="#" onclick="return false;">View Profile</a></li>
-              <li><a href="#" onclick="return false;">Edit Profile</a></li>
-            </ul>
           </li>
           <li>
             <a href="logout.php">

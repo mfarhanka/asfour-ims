@@ -8,7 +8,7 @@
       <ul class=" navbar-right">
         <li class="nav-item dropdown open" style="padding-left: 15px;">
           <a href="javascript:;" class="user-profile dropdown-toggle" aria-haspopup="true" id="navbarDropdown" data-toggle="dropdown" aria-expanded="false">
-            <img src="../build/images/user.png" alt=""><?= isset($_SESSION['client_name']) ? htmlspecialchars($_SESSION['client_name']) : 'Client' ?>
+            <img src="../images/user.png" alt=""><?= isset($_SESSION['client_name']) ? htmlspecialchars($_SESSION['client_name']) : 'Client' ?>
           </a>
           <div class="dropdown-menu dropdown-usermenu pull-right" aria-labelledby="navbarDropdown">
             <a class="dropdown-item" href="javascript:;"> Profile</a>
