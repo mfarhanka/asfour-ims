@@ -138,6 +138,11 @@ if ($_POST && isset($_POST['username']) && isset($_POST['password'])) {
               <div class="clearfix"></div>
 
               <div class="separator">
+                <p class="change_link">
+                  New client? 
+                  <a href="signup.php" class="to_register"> Create Account </a>
+                </p>
+                
                 <div class="clearfix"></div>
                 <br />
 
