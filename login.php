@@ -3,8 +3,12 @@ session_start();
 require_once __DIR__ . '/config.php';
 
 // If user is already logged in, redirect to dashboard
-if (isset($_SESSION['user_id'])) {
-    header('Location: index.php');
+if (isset($_SESSION['user_id']) || isset($_SESSION['client_id'])) {
+    if (isset($_SESSION['user_type']) && $_SESSION['user_type'] === 'client') {
+        header('Location: c/dashboard.php');
+    } else {
+        header('Location: index.php');
+    }
     exit();
 }
 
@@ -61,12 +65,12 @@ if ($_POST && isset($_POST['username']) && isset($_POST['password'])) {
                 
                 if (password_verify($password, $user['password'])) {
                     // Login successful
-                    $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['username'] = $user['username'];
-                    $_SESSION['name'] = $user['name'];
+                    $_SESSION['client_id'] = $user['id'];
+                    $_SESSION['client_username'] = $user['username'];
+                    $_SESSION['client_name'] = $user['name'];
                     $_SESSION['user_type'] = 'client';
                     
-                    header('Location: index.php');
+                    header('Location: c/dashboard.php');
                     exit();
                 } else {
                     $error_message = 'Invalid username or password.';
