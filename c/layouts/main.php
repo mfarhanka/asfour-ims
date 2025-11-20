@@ -24,6 +24,24 @@ try {
         exit;
     }
     
+    // Check client approval status
+    $stmt = $conn->prepare("SELECT status, suspension_reason, suspension_end_date FROM clients WHERE id = ?");
+    $stmt->bind_param("i", $_SESSION['client_id']);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $client = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$client || !in_array($client['status'], ['approved'])) {
+        session_destroy();
+        if ($client['status'] === 'suspended') {
+            header('Location: ../login.php?error=account_suspended');
+        } else {
+            header('Location: ../login.php?error=account_not_approved');
+        }
+        exit;
+    }
+    
     // Check if database connection exists
     if (!isset($conn) || !($conn instanceof mysqli)) {
         die('Database connection not available. Please contact administrator.');

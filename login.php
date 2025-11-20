@@ -14,6 +14,18 @@ if (isset($_SESSION['user_id']) || isset($_SESSION['client_id'])) {
 
 $error_message = '';
 
+// Check for error parameter from URL
+if (isset($_GET['error'])) {
+    switch ($_GET['error']) {
+        case 'account_not_approved':
+            $error_message = 'Your account is no longer approved. Please contact administrator.';
+            break;
+        case 'account_suspended':
+            $error_message = 'Your account has been suspended. Please contact administrator for assistance.';
+            break;
+    }
+}
+
 // Handle login form submission
 if ($_POST && isset($_POST['username']) && isset($_POST['password'])) {
     $username = trim($_POST['username']);
@@ -55,7 +67,7 @@ if ($_POST && isset($_POST['username']) && isset($_POST['password'])) {
             }
         } else {
             // Check client login
-            $stmt = $conn->prepare("SELECT id, username, password, name FROM clients WHERE username = ?");
+            $stmt = $conn->prepare("SELECT id, username, password, name, status, suspension_reason, suspension_end_date FROM clients WHERE username = ?");
             $stmt->bind_param("s", $username);
             $stmt->execute();
             $result = $stmt->get_result();
@@ -64,14 +76,34 @@ if ($_POST && isset($_POST['username']) && isset($_POST['password'])) {
                 $user = $result->fetch_assoc();
                 
                 if (password_verify($password, $user['password'])) {
-                    // Login successful
-                    $_SESSION['client_id'] = $user['id'];
-                    $_SESSION['client_username'] = $user['username'];
-                    $_SESSION['client_name'] = $user['name'];
-                    $_SESSION['user_type'] = 'client';
-                    
-                    header('Location: c/dashboard.php');
-                    exit();
+                    // Check if account is approved
+                    if ($user['status'] === 'pending') {
+                        $error_message = 'Your account is pending admin approval. Please wait for approval before logging in.';
+                    } elseif ($user['status'] === 'rejected') {
+                        $error_message = 'Your account has been rejected. Please contact administrator for more information.';
+                    } elseif ($user['status'] === 'suspended') {
+                        $suspension_msg = 'Your account has been suspended.';
+                        if (!empty($user['suspension_reason'])) {
+                            $suspension_msg .= ' Reason: ' . htmlspecialchars($user['suspension_reason']);
+                        }
+                        if (!empty($user['suspension_end_date'])) {
+                            $end_date = date('F j, Y', strtotime($user['suspension_end_date']));
+                            $suspension_msg .= ' Suspension ends on: ' . $end_date;
+                        }
+                        $suspension_msg .= ' Please contact administrator for assistance.';
+                        $error_message = $suspension_msg;
+                    } elseif ($user['status'] === 'approved') {
+                        // Login successful
+                        $_SESSION['client_id'] = $user['id'];
+                        $_SESSION['client_username'] = $user['username'];
+                        $_SESSION['client_name'] = $user['name'];
+                        $_SESSION['user_type'] = 'client';
+                        
+                        header('Location: c/dashboard.php');
+                        exit();
+                    } else {
+                        $error_message = 'Account status unknown. Please contact administrator.';
+                    }
                 } else {
                     $error_message = 'Invalid username or password.';
                 }

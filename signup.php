@@ -95,7 +95,7 @@ if ($_POST && isset($_POST['name']) && isset($_POST['email']) && isset($_POST['p
             $stmt->bind_param("sssss", $name, $email, $phone, $username, $hashed_password);
             
             if ($stmt->execute()) {
-                $success_message = 'Account created successfully! You can now login with your credentials.';
+                $success_message = 'Registration submitted successfully! Your account is pending admin approval. You will be contacted once your account is approved and you can then login.';
                 // Clear form data
                 $_POST = [];
             } else {
@@ -144,13 +144,17 @@ if ($_POST && isset($_POST['name']) && isset($_POST['email']) && isset($_POST['p
             <form method="post" action="">
               <h1>Client Registration</h1>
               <p>Create your investment account</p>
+              <div class="alert alert-info" style="text-align: left; margin-bottom: 20px;">
+                <i class="fa fa-info-circle"></i> 
+                <strong>Note:</strong> Your account will need admin approval before you can login and start investing.
+              </div>
               
               <?php if (!empty($success_message)): ?>
                 <div class="alert alert-success" role="alert">
                   <i class="fa fa-check-circle"></i> <?= htmlspecialchars($success_message) ?>
                   <br><br>
-                  <a href="login.php" class="btn btn-success btn-sm">
-                    <i class="fa fa-sign-in"></i> Login Now
+                  <a href="login.php" class="btn btn-primary btn-sm">
+                    <i class="fa fa-arrow-left"></i> Back to Login
                   </a>
                 </div>
               <?php endif; ?>
