@@ -1,4 +1,16 @@
-<?php /* partials/sidebar.php */ ?>
+<?php /* partials/sidebar.php */ 
+
+// Get pending clients count for badge
+$pending_clients_count = 0;
+if (isset($conn)) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM clients WHERE status = 'pending'");
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    $pending_clients_count = $result['count'];
+    $stmt->close();
+}
+
+?>
 <div class="col-md-3 left_col">
   <div class="left_col scroll-view">
     <div class="navbar nav_title" style="border: 0;">
@@ -27,7 +39,18 @@
         <ul class="nav side-menu">
           <li><a href="index.php?p=dashboard"><i class="fa fa-home"></i> Dashboard</a></li>
           <!-- Rentals menu removed for investment context -->
-          <li><a href="index.php?p=client-list"><i class="fa fa-users"></i> Client List</a></li>
+          <li>
+            <a><i class="fa fa-users"></i> Clients <span class="fa fa-chevron-down"></span></a>
+            <ul class="nav child_menu">
+              <li><a href="index.php?p=client-list">Client List</a></li>
+              <li><a href="index.php?p=client-management">Client Management</a></li>
+              <li><a href="index.php?p=pending-clients">Pending Registrations
+                <?php if ($pending_clients_count > 0): ?>
+                  <span class="badge bg-orange"><?= $pending_clients_count ?></span>
+                <?php endif; ?>
+              </a></li>
+            </ul>
+          </li>
           <li><a href="index.php?p=investment-list"><i class="fa fa-line-chart"></i> Investment Management</a></li>
           <li><a href="index.php?p=client-investment"><i class="fa fa-money"></i> Client Investments</a></li>
           <li><a href="index.php?p=pending-investments"><i class="fa fa-clock-o"></i> Pending Approvals <span class="badge bg-orange">New</span></a></li>
