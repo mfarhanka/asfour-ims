@@ -3,6 +3,20 @@
 
 $client_id = $_SESSION['client_id'];
 
+// Get and display success/error messages
+$success_message = $_SESSION['success_message'] ?? '';
+$error_message = $_SESSION['error_message'] ?? '';
+unset($_SESSION['success_message'], $_SESSION['error_message']);
+
+// Get client's bank account information
+$bankInfoSQL = "SELECT bank_name, account_number, account_holder, iban_swift FROM client_bank_info WHERE client_id = ?";
+$bankStmt = $conn->prepare($bankInfoSQL);
+$bankStmt->bind_param("i", $client_id);
+$bankStmt->execute();
+$bankResult = $bankStmt->get_result();
+$bankInfo = $bankResult->fetch_assoc();
+$bankStmt->close();
+
 // Get client's detailed investment information with partial payment support and withdrawal status
 $investmentsSQL = "SELECT 
     ci.id as investment_id,
@@ -34,7 +48,24 @@ $investmentsSQL = "SELECT
 FROM client_investments ci
 JOIN investments i ON ci.investment_id = i.id
 JOIN clients c ON ci.client_id = c.id
-LEFT JOIN withdrawals w ON ci.id = w.client_investment_id
+LEFT JOIN (
+    SELECT 
+        w1.client_investment_id,
+        w1.withdrawal_id,
+        w1.status,
+        w1.withdrawal_amount,
+        w1.request_date,
+        w1.withdrawal_proof
+    FROM withdrawals w1
+    INNER JOIN (
+        SELECT 
+            client_investment_id, 
+            MAX(request_date) as latest_request
+        FROM withdrawals 
+        GROUP BY client_investment_id
+    ) w2 ON w1.client_investment_id = w2.client_investment_id 
+        AND w1.request_date = w2.latest_request
+) w ON ci.id = w.client_investment_id
 WHERE ci.client_id = ?
 ORDER BY ci.investment_date DESC, ci.created_at DESC";
 
@@ -73,6 +104,20 @@ $withdrawalHistoryResult = $withdrawalStmt->get_result();
 </div>
 
 <div class="clearfix"></div>
+
+<?php if (!empty($success_message)): ?>
+  <div class="alert alert-success alert-dismissible">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <i class="fa fa-check"></i> <?= htmlspecialchars($success_message) ?>
+  </div>
+<?php endif; ?>
+
+<?php if (!empty($error_message)): ?>
+  <div class="alert alert-danger alert-dismissible">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    <i class="fa fa-exclamation-triangle"></i> <?= htmlspecialchars($error_message) ?>
+  </div>
+<?php endif; ?>
 
 <div class="row">
   <div class="col-md-12 col-sm-12">
@@ -631,11 +676,57 @@ function cancelClientWithdrawal(withdrawalId, projectTitle) {
           
           <div class="form-group">
             <label for="withdrawal_notes">Bank Account Details / Instructions <span class="text-danger">*</span></label>
-            <textarea class="form-control" id="withdrawal_notes" name="client_notes" rows="5" required
-                      placeholder="Please provide your bank account details for the transfer:&#10;&#10;Bank Name:&#10;Account Number:&#10;Account Holder Name:&#10;IBAN/SWIFT (if applicable):&#10;&#10;Any additional instructions..."></textarea>
+            
+            <?php if (!empty($bankInfo)): ?>
+              <!-- Show saved bank details with option to edit -->
+              <div class="well well-sm" style="background: #f0f8ff; border-left: 4px solid #3498db;">
+                <h5><i class="fa fa-bank"></i> Your Saved Bank Details:</h5>
+                <div class="row">
+                  <div class="col-md-6">
+                    <strong>Bank Name:</strong> <?= htmlspecialchars($bankInfo['bank_name'] ?: 'Not specified') ?><br>
+                    <strong>Account Holder:</strong> <?= htmlspecialchars($bankInfo['account_holder'] ?: 'Not specified') ?>
+                  </div>
+                  <div class="col-md-6">
+                    <strong>Account Number:</strong> <?= htmlspecialchars($bankInfo['account_number'] ?: 'Not specified') ?><br>
+                    <strong>IBAN/SWIFT:</strong> <?= htmlspecialchars($bankInfo['iban_swift'] ?: 'Not specified') ?>
+                  </div>
+                </div>
+                <div style="margin-top: 10px;">
+                  <label class="checkbox-inline">
+                    <input type="checkbox" id="use_saved_bank_details" checked>
+                    Use these bank details for withdrawal
+                  </label>
+                  <span class="pull-right">
+                    <a href="profile.php" target="_blank" class="btn btn-xs btn-primary">
+                      <i class="fa fa-edit"></i> Update Bank Details
+                    </a>
+                  </span>
+                </div>
+              </div>
+            <?php endif; ?>
+            
+            <textarea class="form-control" id="withdrawal_notes" name="client_notes" rows="6" required><?php if (!empty($bankInfo)): ?>Bank Transfer Details:
+
+Bank Name: <?= htmlspecialchars($bankInfo['bank_name'] ?: 'Not specified') ?>
+Account Number: <?= htmlspecialchars($bankInfo['account_number'] ?: 'Not specified') ?>
+Account Holder Name: <?= htmlspecialchars($bankInfo['account_holder'] ?: 'Not specified') ?>
+IBAN/SWIFT Code: <?= htmlspecialchars($bankInfo['iban_swift'] ?: 'Not specified') ?>
+
+Please transfer the withdrawal amount to the above account details.<?php else: ?>Please provide your bank account details for the transfer:
+
+Bank Name:
+Account Number:
+Account Holder Name:
+IBAN/SWIFT (if applicable):
+
+Any additional instructions...<?php endif; ?></textarea>
+            
             <p class="help-block">
               <i class="fa fa-exclamation-triangle"></i> Please ensure your bank details are correct. 
               Admin will process the withdrawal based on this information.
+              <?php if (!empty($bankInfo)): ?>
+                <br><i class="fa fa-info-circle"></i> Your saved bank details have been pre-filled. You can edit them above if needed.
+              <?php endif; ?>
             </p>
           </div>
         </div>
@@ -651,3 +742,66 @@ function cancelClientWithdrawal(withdrawalId, projectTitle) {
     </div>
   </div>
 </div>
+
+<script>
+$(document).ready(function() {
+    <?php if (!empty($bankInfo)): ?>
+    // Handle saved bank details checkbox
+    $('#use_saved_bank_details').change(function() {
+        var savedDetails = `Bank Transfer Details:
+
+Bank Name: <?= htmlspecialchars($bankInfo['bank_name'] ?: 'Not specified') ?>
+Account Number: <?= htmlspecialchars($bankInfo['account_number'] ?: 'Not specified') ?>
+Account Holder Name: <?= htmlspecialchars($bankInfo['account_holder'] ?: 'Not specified') ?>
+IBAN/SWIFT Code: <?= htmlspecialchars($bankInfo['iban_swift'] ?: 'Not specified') ?>
+
+Please transfer the withdrawal amount to the above account details.`;
+
+        var manualTemplate = `Please provide your bank account details for the transfer:
+
+Bank Name:
+Account Number:
+Account Holder Name:
+IBAN/SWIFT (if applicable):
+
+Any additional instructions...`;
+
+        if ($(this).is(':checked')) {
+            $('#withdrawal_notes').val(savedDetails);
+        } else {
+            $('#withdrawal_notes').val(manualTemplate);
+        }
+    });
+    <?php endif; ?>
+    
+    // Form submission validation
+    $('#withdrawalRequestForm').on('submit', function(e) {
+        var notes = $('#withdrawal_notes').val().trim();
+        
+        if (notes === '') {
+            alert('Please provide bank account details for withdrawal.');
+            e.preventDefault();
+            return false;
+        }
+        
+        console.log('Submitting withdrawal with notes length:', notes.length);
+        console.log('Investment ID:', $('#withdrawal_investment_id').val());
+        return true;
+    });
+    
+    // Existing JavaScript for withdrawal modal
+    window.openWithdrawalModal = function(investmentId, projectTitle, investedAmount, profitPercent, duration, startDate) {
+        // Set form values
+        $('#withdrawal_investment_id').val(investmentId);
+        $('#withdrawal_project_title').text(projectTitle);
+        $('#withdrawal_invested_amount').text('$' + parseFloat(investedAmount).toLocaleString());
+        
+        // Calculate expected profit
+        var profit = parseFloat(investedAmount) * (parseFloat(profitPercent) / 100);
+        $('#withdrawal_profit_amount').text('$' + profit.toLocaleString());
+        
+        // Show modal
+        $('#withdrawalModal').modal('show');
+    };
+});
+</script>

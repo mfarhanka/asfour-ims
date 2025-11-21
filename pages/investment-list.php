@@ -80,7 +80,7 @@ if ($_POST && isset($_POST['editInvestmentId'])) {
 }
 
 $sql = "SELECT i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.duration, i.start_date, i.end_date, i.created_at,
-               COALESCE(SUM(ci.invested_amount), 0) as total_invested
+               COALESCE(SUM(CASE WHEN ci.status = 'active' THEN ci.invested_amount ELSE 0 END), 0) as total_invested
         FROM investments i 
         LEFT JOIN client_investments ci ON i.id = ci.investment_id 
         GROUP BY i.id, i.title, i.total_goal, i.profit_percent, i.profit_percent_min, i.profit_percent_max, i.duration, i.start_date, i.end_date, i.created_at

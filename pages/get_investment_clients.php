@@ -11,8 +11,8 @@ if ($investmentId <= 0) {
 
 // Get investment details with client investment summary
 $investmentSQL = "SELECT i.*, 
-                         COUNT(ci.id) as total_investors,
-                         COALESCE(SUM(ci.invested_amount), 0) as total_invested
+                         COUNT(CASE WHEN ci.status = 'active' THEN ci.id END) as total_investors,
+                         COALESCE(SUM(CASE WHEN ci.status = 'active' THEN ci.invested_amount ELSE 0 END), 0) as total_invested
                   FROM investments i 
                   LEFT JOIN client_investments ci ON i.id = ci.investment_id 
                   WHERE i.id = ?
@@ -32,11 +32,11 @@ $investment = $investmentResult->fetch_assoc();
 $stmt->close();
 
 // Get client investment details for this investment
-$sql = "SELECT ci.id, ci.invested_amount, ci.investment_date, ci.created_at,
+$sql = "SELECT ci.id, ci.invested_amount, ci.investment_date, ci.created_at, ci.status,
                c.name as client_name, c.username as client_username, c.email as client_email, c.phone as client_phone
         FROM client_investments ci 
         LEFT JOIN clients c ON ci.client_id = c.id 
-        WHERE ci.investment_id = ?
+        WHERE ci.investment_id = ? AND ci.status = 'active'
         ORDER BY ci.investment_date DESC";
 
 $stmt = $conn->prepare($sql);

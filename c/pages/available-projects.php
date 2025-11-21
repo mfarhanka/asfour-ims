@@ -15,8 +15,8 @@ $projectsSQL = "SELECT
     i.start_date,
     i.end_date,
     i.created_at,
-    COALESCE(SUM(ci.invested_amount), 0) as total_invested,
-    COUNT(ci.id) as investor_count
+    COALESCE(SUM(CASE WHEN ci.status = 'active' THEN ci.invested_amount ELSE 0 END), 0) as total_invested,
+    COUNT(CASE WHEN ci.status = 'active' THEN ci.id END) as investor_count
 FROM investments i
 LEFT JOIN client_investments ci ON i.id = ci.investment_id
 WHERE i.start_date > NOW() OR (i.start_date <= NOW() AND i.end_date >= NOW())

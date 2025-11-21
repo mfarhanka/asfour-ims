@@ -31,19 +31,20 @@ if ($_POST && isset($_POST['action']) && isset($_POST['client_id'])) {
         $stmt->close();
         
     } elseif ($action === 'reject') {
+        // Set default rejection reason if none provided
         if (empty($rejection_reason)) {
-            $error_message = 'Rejection reason is required.';
-        } else {
-            $stmt = $conn->prepare("UPDATE clients SET status = 'rejected', approved_by = ?, approved_at = NOW(), rejection_reason = ? WHERE id = ? AND status = 'pending'");
-            $stmt->bind_param("isi", $admin_id, $rejection_reason, $client_id);
-            
-            if ($stmt->execute() && $stmt->affected_rows > 0) {
-                $success_message = 'Client account rejected.';
-            } else {
-                $error_message = 'Error rejecting client account.';
-            }
-            $stmt->close();
+            $rejection_reason = 'No reason stated';
         }
+        
+        $stmt = $conn->prepare("UPDATE clients SET status = 'rejected', approved_by = ?, approved_at = NOW(), rejection_reason = ? WHERE id = ? AND status = 'pending'");
+        $stmt->bind_param("isi", $admin_id, $rejection_reason, $client_id);
+        
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            $success_message = 'Client account rejected.';
+        } else {
+            $error_message = 'Error rejecting client account.';
+        }
+        $stmt->close();
     }
 }
 

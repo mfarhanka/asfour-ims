@@ -13,12 +13,15 @@ if (!isset($_SESSION['client_id'])) {
 $client_id = $_SESSION['client_id'];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // Debug: Log the POST data
+    error_log("Withdrawal request POST data: " . print_r($_POST, true));
+    
     $investment_id = intval($_POST['investment_id']);
     $client_notes = trim($_POST['client_notes']);
     
     // Validate input
     if (empty($investment_id) || empty($client_notes)) {
-        $_SESSION['error_message'] = "Please provide all required information.";
+        $_SESSION['error_message'] = "Please provide all required information. Investment ID: $investment_id, Notes length: " . strlen($client_notes);
         header('Location: my-investments.php');
         exit();
     }
@@ -118,9 +121,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     );
     
     if ($insertStmt->execute()) {
-        $_SESSION['success_message'] = "Withdrawal request submitted successfully! Admin will review and process your request.";
+        // Debug: Check if the record was actually inserted
+        $inserted_id = $conn->insert_id;
+        error_log("Withdrawal request inserted with ID: " . $inserted_id);
+        $_SESSION['success_message'] = "Withdrawal request submitted successfully! Admin will review and process your request. (Request ID: $inserted_id)";
     } else {
-        $_SESSION['error_message'] = "Failed to submit withdrawal request. Please try again.";
+        // Debug: Log the error
+        error_log("Failed to insert withdrawal request: " . $conn->error);
+        $_SESSION['error_message'] = "Failed to submit withdrawal request. Please try again. Error: " . $conn->error;
     }
     
     $insertStmt->close();

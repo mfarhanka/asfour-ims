@@ -44,7 +44,7 @@ if (isset($conn)) {
             <ul class="nav child_menu">
               <li><a href="index.php?p=client-list">Client List</a></li>
               <li><a href="index.php?p=client-management">Client Management</a></li>
-              <li><a href="index.php?p=pending-clients">Pending Registrations
+              <li><a href="index.php?p=client-pending">Pending Registrations
                 <?php if ($pending_clients_count > 0): ?>
                   <span class="badge bg-orange"><?= $pending_clients_count ?></span>
                 <?php endif; ?>

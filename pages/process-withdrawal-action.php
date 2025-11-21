@@ -70,10 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Reject withdrawal
         $admin_notes = trim($_POST['admin_notes']);
         
+        // Set default rejection reason if none provided
         if (empty($admin_notes)) {
-            $_SESSION['error_message'] = "Please provide a reason for rejection.";
-            header('Location: ../index.php?p=pending-withdrawals');
-            exit();
+            $admin_notes = 'No reason stated';
         }
         
         $updateSQL = "UPDATE withdrawals SET status = 'rejected', admin_notes = ?, processed_by = ?, processed_date = NOW() WHERE withdrawal_id = ?";

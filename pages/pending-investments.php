@@ -27,6 +27,11 @@ if ($_POST && isset($_POST['reject_investment'])) {
     $investmentId = intval($_POST['reject_investment']);
     $rejectionReason = trim($_POST['rejection_reason']);
     
+    // Set default rejection reason if none provided
+    if (empty($rejectionReason)) {
+        $rejectionReason = 'No reason stated';
+    }
+    
     $rejectSQL = "UPDATE client_investments 
                   SET status = 'rejected', 
                       rejection_reason = ? 
@@ -162,8 +167,9 @@ $result = $conn->query($sql);
           <input type="hidden" name="reject_investment" id="reject_investment_id">
           <p id="reject_investment_details"></p>
           <div class="form-group">
-            <label for="rejection_reason">Rejection Reason <span class="text-danger">*</span></label>
-            <textarea class="form-control" name="rejection_reason" id="rejection_reason" rows="4" required placeholder="Please provide a clear reason for rejection..."></textarea>
+            <label for="rejection_reason">Rejection Reason</label>
+            <textarea class="form-control" name="rejection_reason" id="rejection_reason" rows="4" placeholder="Enter reason for rejection or leave default...">No reason stated</textarea>
+            <small class="text-muted">You can modify the reason above or leave the default message.</small>
           </div>
         </div>
         <div class="modal-footer">
